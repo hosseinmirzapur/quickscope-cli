@@ -71,10 +71,21 @@ User input (key/mouse)
 - `input.rs`: Global keybinding router, mouse event dispatcher.
 
 ### `ui/` — Rendering (ratatui)
-- `mod.rs`: Root layout (status bar, tab bar, content area, keybinding hints).
-- `theme.rs`: `Theme` struct with semantic color tokens. Dark + Degen presets.
+- `mod.rs`: Root module, re-exports `render_ui`, `Theme`, and format utilities.
+- `layout.rs`: Root layout — top status bar, sidebar | content split, bottom keybinding bar, overlays (modal, toast, command palette).
+- `sidebar.rs`: Persistent VS Code-style activity bar with 7 tab icons. Collapsible via `Ctrl+B`. Shows kill switch indicator.
+- `format.rs`: `format_marketcap()`, `format_volume()`, `marketcap_color()`, `volume_color()` — abbreviated display + tier-based colors.
+- `theme.rs`: `Theme` struct with 18 semantic color tokens. Dark + Degen presets.
 - `dashboard.rs` ... `settings.rs`: One file per tab. Each exports `render(frame, area, state)`.
-- `widgets/`: Reusable components — `Sparkline`, `ProgressBar`, `Tag`, `Modal`, `ContextMenu`, `Table`, `SearchBar`, `Notification`, `Chart`.
+- `widgets/command_palette.rs`: Ctrl+P overlay with search/filter, 14 commands, arrows to navigate.
+- `widgets/`: Reusable components — `Toast`, `Modal` (Clear-backed), `Sparkline`, `ProgressBar`, `Tag`, `Table`, `SearchBar`, `Chart`, `ContextMenu`.
+
+**Key UI patterns:**
+- All overlays render on top of content with `Clear` backdrop (no bleed-through).
+- Token lists use `filtered_trending()` for search and `scroll_offset` + `list_cursor` for bounded scrolling.
+- Marketcap is always abbreviated and color-coded (blue ≥$10M, green ≥$1M, yellow ≥$100K, red <$100K).
+- Volume and marketcap are primary display columns; price is secondary/muted.
+- Toast notifications auto-dismiss after 4 seconds with smooth decay.
 
 **Rule:** UI code never does I/O. It only reads `AppState` and renders. Async work happens in `app/` or `data/`.
 
