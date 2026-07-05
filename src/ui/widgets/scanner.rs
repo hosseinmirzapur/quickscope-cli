@@ -1,6 +1,6 @@
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Modifier, Style, Stylize},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
@@ -54,7 +54,11 @@ fn render_token_list(frame: &mut Frame, area: Rect, state: &AppState, theme: &Th
         .take(visible_rows)
         .collect();
 
-    let items: Vec<ListItem> = if visible_tokens.is_empty() {
+    let items: Vec<ListItem> = if state.loading_trending {
+        vec![ListItem::new(Line::from(
+            Span::styled(" ◌ Fetching trending tokens...", Style::default().fg(theme.warning)),
+        ))]
+    } else if visible_tokens.is_empty() {
         vec![ListItem::new(Line::from(
             if state.input_active && !state.input_buffer.is_empty() {
                 Span::styled(" No matches — try a different search", Style::default().fg(theme.muted))

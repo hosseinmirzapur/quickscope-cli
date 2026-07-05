@@ -1,6 +1,6 @@
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Modifier, Style, Stylize},
+    style::{Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Paragraph},
     Frame,
@@ -85,7 +85,7 @@ pub fn render(frame: &mut Frame, area: Rect, state: &AppState, theme: &Theme) {
     frame.render_widget(Paragraph::new(Text::from(mid)).block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(theme.border))), top[1]);
 
     // Right: Security audit
-    let mut right = vec![
+    let right = vec![
         Line::from(Span::styled(" Security Audit", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD))),
         Line::from(""),
         Line::from(vec![

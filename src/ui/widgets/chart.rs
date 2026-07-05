@@ -1,6 +1,6 @@
 use ratatui::{
     layout::Rect,
-    style::{Color, Style, Stylize},
+    style::{Color, Style},
     widgets::{Widget},
     buffer::Buffer,
 };
@@ -46,18 +46,18 @@ impl Widget for Chart {
             let lo_y = lo_y.min(area.y + area.height - 1);
 
             for y in hi_y..=lo_y {
-                buf.set_string(x, y, "│".to_string(), style);
+                buf.set_string(x, y, "│", style);
             }
 
             // Open (left tick)
             let open_y = area.y + ((self.max_price - c.open) / range * (area.height as f64)).round() as u16;
             let open_y = open_y.min(area.y + area.height - 1);
-            buf.set_string(x.saturating_sub(1), open_y, "┤".to_string(), style);
+            buf.set_string(x.saturating_sub(1), open_y, "┤", style);
 
             // Close (right tick)
             let close_y = area.y + ((self.max_price - c.close) / range * (area.height as f64)).round() as u16;
             let close_y = close_y.min(area.y + area.height - 1);
-            buf.set_string(x, close_y, "├".to_string(), style);
+            buf.set_string(x, close_y, "├", style);
         }
     }
 }
