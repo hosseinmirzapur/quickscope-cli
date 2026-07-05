@@ -117,9 +117,7 @@ fn apply_weight_nudges(
     discriminations: &[FeatureDiscrimination],
     max_delta: f64,
 ) {
-    // Map features to category weights
     let category_map = build_category_map(discriminations);
-    let mut total_nudge = 0.0;
 
     let nudges: Vec<(&mut f64, f64)> = vec![
         (&mut config.w_momentum, category_map.get("momentum").copied().unwrap_or(0.0)),
@@ -134,7 +132,6 @@ fn apply_weight_nudges(
     for (weight, nudge) in nudges {
         let clamped_nudge = nudge.clamp(-max_delta, max_delta);
         *weight = (*weight + clamped_nudge).clamp(0.05, 0.40);
-        total_nudge += clamped_nudge;
     }
 }
 
