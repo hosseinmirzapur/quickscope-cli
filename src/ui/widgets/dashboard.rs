@@ -6,7 +6,9 @@ use ratatui::{
     Frame,
 };
 use crate::app::AppState;
+use crate::data::models::TrendingToken;
 use crate::ui::theme::Theme;
+use crate::ui::format::{format_marketcap, marketcap_color, format_volume};
 
 /// Render the Dashboard tab: portfolio left, trending right-top, smart money right-bottom.
 pub fn render(frame: &mut Frame, area: Rect, state: &AppState, theme: &Theme) {
@@ -87,13 +89,27 @@ fn render_portfolio_panel(frame: &mut Frame, area: Rect, state: &AppState, theme
 }
 
 fn render_trending_panel(frame: &mut Frame, area: Rect, state: &AppState, theme: &Theme) {
-    let items: Vec<ListItem> = if state.trending.is_empty() {
+    let visible_rows = area.height.saturating_sub(2) as usize; // minus borders
+    let filtered = state.filtered_trending();
+    let offset = state.scroll_offset.min(filtered.len().saturating_sub(1));
+    let visible_tokens: Vec<&&TrendingToken> = filtered
+        .iter()
+        .skip(offset)
+        .take(visible_rows)
+        .collect();
+
+    let items: Vec<ListItem> = if visible_tokens.is_empty() {
         vec![ListItem::new(Line::from(
-            Span::styled(" No trending data — press 'r'", Style::default().fg(theme.muted)),
+            if state.input_active && !state.input_buffer.is_empty() {
+                Span::styled(" No matches — try a different search", Style::default().fg(theme.muted))
+            } else {
+                Span::styled(" No trending data — press 'r'", Style::default().fg(theme.muted))
+            },
         ))]
     } else {
-        state.trending.iter().enumerate().map(|(i, token)| {
-            let selected = i == state.list_cursor;
+        visible_tokens.iter().enumerate().map(|(rel_i, token)| {
+            let abs_i = offset + rel_i;
+            let selected = abs_i == state.list_cursor;
             let style = if selected {
                 Style::default().bg(theme.highlight).fg(theme.accent)
             } else {
@@ -102,27 +118,47 @@ fn render_trending_panel(frame: &mut Frame, area: Rect, state: &AppState, theme:
 
             let change = token.change_1h.unwrap_or(0.0);
             let change_color = if change >= 0.0 { theme.success } else { theme.danger };
-
+            let mc_color = marketcap_color(token.market_cap, theme);
+            let vol = token.volume_1h.unwrap_or(0.0);
             let sm = token.smart_degen_count.unwrap_or(0);
-            let hot = token.hot_level.unwrap_or(0);
-            let hot_bar = "█".repeat(hot as usize);
+            let is_hot = token.hot_level.unwrap_or(0) >= 3;
+            let vol_1h_change = token.change_1h.unwrap_or(0.0);
 
+            // Primary: Symbol | Marketcap (color-coded) | Vol 1h | Change 1h
+            // Secondary: Price (muted) | Smart Money | 🔥 if hot + gain
             let mut cols = vec![
-                Span::styled(format!(" {:>6}", token.symbol), style.add_modifier(Modifier::BOLD)),
+                Span::styled(format!(" {:>8}", token.symbol), style.add_modifier(Modifier::BOLD)),
                 Span::raw(" "),
-                Span::styled(format!("${:.8}", token.price_usd), style),
+                Span::styled(
+                    format_marketcap(token.market_cap),
+                    Style::default().fg(mc_color).add_modifier(Modifier::BOLD),
+                ),
                 Span::raw(" "),
-                Span::styled(format!("MC ${:.0}", token.market_cap), Style::default().fg(theme.muted)),
+                Span::styled(
+                    format_volume(vol),
+                    Style::default().fg(theme.muted),
+                ),
                 Span::raw(" "),
-                Span::styled(format!("{:+.1}%", change), Style::default().fg(change_color)),
+                Span::styled(format!("{:+.1}%", change), Style::default().fg(change_color).add_modifier(Modifier::BOLD)),
             ];
+
+            // Price (muted, secondary)
+            cols.push(Span::raw(" "));
+            cols.push(Span::styled(
+                format!("${:.8}", token.price_usd),
+                Style::default().fg(theme.muted),
+            ));
+
+            // Smart money count
             if sm > 0 {
                 cols.push(Span::raw(" "));
                 cols.push(Span::styled(format!("SM:{}", sm), Style::default().fg(theme.accent)));
             }
-            if hot > 0 {
+
+            // 🔥 Fire indicator if hot AND positive change
+            if is_hot && vol_1h_change > 0.0 {
                 cols.push(Span::raw(" "));
-                cols.push(Span::styled(hot_bar, Style::default().fg(theme.warning)));
+                cols.push(Span::styled("🔥", Style::default().fg(theme.warning)));
             }
 
             ListItem::new(Line::from(cols))
