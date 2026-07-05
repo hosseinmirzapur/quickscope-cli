@@ -1,8 +1,8 @@
 use ratatui::{
     layout::Rect,
-    style::{Color, Modifier, Style, Stylize},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Widget},
+    widgets::{Paragraph, Widget},
     buffer::Buffer,
 };
 
@@ -25,7 +25,6 @@ impl Widget for Table<'_> {
             return;
         }
         let mut y = area.y;
-        let left = area.x + 1;
 
         // Header row
         if !self.headers.is_empty() {
@@ -46,13 +45,12 @@ impl Widget for Table<'_> {
 
         // Data rows (with scroll offset)
         let start = self.scroll;
-        let visible = (area.height as usize).saturating_sub(if self.headers.is_empty() { 0 } else { 1 });
         let max_rows = area.height as usize - 1;
 
         for row_idx in start..(start + max_rows).min(self.rows.len()) {
             let bg = if Some(row_idx) == self.cursor {
                 self.highlight_color
-            } else if (row_idx - start) % 2 == 0 {
+            } else if (row_idx - start).is_multiple_of(2) {
                 self.row_colors.0
             } else {
                 self.row_colors.1
