@@ -5,6 +5,11 @@ use super::state::AppState;
 /// Translate crossterm key events into AppEvents and dispatch to the state.
 /// Returns a list of AppCommands to execute (side effects).
 pub fn handle_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
+    // ── Command palette mode — input overrides everything ──────────
+    if state.show_command_palette {
+        return handle_palette_key(key, state);
+    }
+
     // Ctrl+C → quit
     if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
         if state.open_positions.is_empty() {
@@ -16,7 +21,19 @@ pub fn handle_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
         return vec![];
     }
 
-    // ? → help (context-sensitive modal)
+    // Ctrl+P → command palette
+    if key.code == KeyCode::Char('p') && key.modifiers.contains(KeyModifiers::CONTROL) {
+        state.toggle_command_palette();
+        return vec![];
+    }
+
+    // Ctrl+B → toggle sidebar
+    if key.code == KeyCode::Char('b') && key.modifiers.contains(KeyModifiers::CONTROL) {
+        state.toggle_sidebar();
+        return vec![];
+    }
+
+    // ? → help (modal)
     if key.code == KeyCode::Char('?') {
         if state.show_modal {
             state.dismiss_modal();
@@ -25,39 +42,23 @@ pub fn handle_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
             state.modal_message = format!(
                 "QuickScope Help — {} Tab\n\n\
                  Keyboard shortcuts:\n\
-                 1-7: Switch tabs\n\
-                 j/k or ↑/↓: Navigate lists\n\
-                 h/l or ←/→: Panel focus\n\
+                 ↑/↓: Navigate lists\n\
                  Enter: Select / View detail\n\
                  b: Paper Buy | s: Paper Sell\n\
                  w: Watchlist toggle\n\
                  r: Refresh data\n\
                  /: Search / Filter\n\
                  Space: Star / Watch\n\
-                 m: Open modal\n\
                  Esc: Close modal / Back\n\
                  Tab: Next tab | Shift+Tab: Prev tab\n\
+                 Ctrl+P: Command palette\n\
+                 Ctrl+B: Toggle sidebar\n\
                  Ctrl+E: Emergency exit all\n\
                  q or Ctrl+C: Quit\n\
                  ?: This help",
                 state.active_tab.label()
             );
         }
-        return vec![];
-    }
-
-    // Tab switching
-    if let Some(tab) = match key.code {
-        KeyCode::Char('1') => Some(TabIndex::Dashboard),
-        KeyCode::Char('2') => Some(TabIndex::Scanner),
-        KeyCode::Char('3') => Some(TabIndex::Analyzer),
-        KeyCode::Char('4') => Some(TabIndex::TradeTerminal),
-        KeyCode::Char('5') => Some(TabIndex::Journal),
-        KeyCode::Char('6') => Some(TabIndex::Strategy),
-        KeyCode::Char('7') => Some(TabIndex::Settings),
-        _ => None,
-    } {
-        state.switch_tab(tab);
         return vec![];
     }
 
@@ -71,10 +72,12 @@ pub fn handle_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
         return vec![];
     }
 
-    // Esc: dismiss modal / deselect / cancel search
+    // Esc: dismiss modal / deselect / cancel search / close palette
     if key.code == KeyCode::Esc {
         if state.show_modal {
             state.dismiss_modal();
+        } else if state.show_command_palette {
+            state.show_command_palette = false;
         } else if state.input_active {
             state.input_active = false;
             state.input_buffer.clear();
@@ -96,10 +99,9 @@ pub fn handle_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
             }
             KeyCode::Enter => {
                 state.input_active = false;
-                // Trigger search based on active tab
                 return match state.active_tab {
                     TabIndex::Scanner | TabIndex::Dashboard => {
-                        vec![AppCommand::FetchTrending] // will filter client-side
+                        vec![AppCommand::FetchTrending]
                     }
                     _ => vec![],
                 };
@@ -126,19 +128,7 @@ pub fn handle_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
         return vec![];
     }
 
-    // m → open modal
-    if key.code == KeyCode::Char('m') {
-        state.show_modal = true;
-        state.modal_message = "Quick Actions\n\n\
-            a: Analyze selected token\n\
-            b: Paper Buy\n\
-            s: Paper Sell\n\
-            w: Toggle Watchlist\n\
-            r: Refresh all data".to_string();
-        return vec![];
-    }
-
-    // h/l or ←/→ → panel focus
+    // h/l or ←/→ → panel focus (future use)
     if key.code == KeyCode::Char('h') || key.code == KeyCode::Left {
         state.set_status("← panel left");
         return vec![];
@@ -148,10 +138,12 @@ pub fn handle_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
         return vec![];
     }
 
-    // j/k or ↑/↓: navigate lists
+    // ↑/↓: navigate lists (no VIM j/k)
     match key.code {
-        KeyCode::Char('j') | KeyCode::Down => state.move_cursor(1),
-        KeyCode::Char('k') | KeyCode::Up => state.move_cursor(-1),
+        KeyCode::Up => state.move_cursor(-1),
+        KeyCode::Down => state.move_cursor(1),
+        KeyCode::PageUp => state.move_cursor(-10),
+        KeyCode::PageDown => state.move_cursor(10),
         _ => {}
     }
 
@@ -232,22 +224,62 @@ pub fn handle_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
     vec![]
 }
 
-/// Handle mouse events — tab bar clicks, list selection, scroll.
+/// Handle key events while the command palette is open.
+fn handle_palette_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
+    match key.code {
+        KeyCode::Esc => {
+            state.show_command_palette = false;
+            vec![]
+        }
+        KeyCode::Enter => {
+            if let Some(cmd) = crate::ui::widgets::command_palette::execute_palette_selection(state) {
+                vec![cmd]
+            } else {
+                vec![]
+            }
+        }
+        KeyCode::Up => {
+            state.palette_cursor = state.palette_cursor.saturating_sub(1);
+            vec![]
+        }
+        KeyCode::Down => {
+            state.palette_cursor += 1;
+            vec![]
+        }
+        KeyCode::Char(c) => {
+            state.palette_filter.push(c);
+            state.palette_cursor = 0;
+            vec![]
+        }
+        KeyCode::Backspace => {
+            state.palette_filter.pop();
+            state.palette_cursor = 0;
+            vec![]
+        }
+        _ => vec![],
+    }
+}
+
+/// Handle mouse events — sidebar clicks, list selection, scroll.
 pub fn handle_mouse(mouse: MouseEvent, state: &mut AppState) -> Vec<AppCommand> {
     match mouse.kind {
         MouseEventKind::Down(_button) => {
-            // Tab bar: rows 0 is top bar, row 1 is tab bar
-            if mouse.row == 1 {
-                let tab_idx = (mouse.column.saturating_sub(1) / 10) as usize;
-                if tab_idx < TabIndex::COUNT {
-                    state.switch_tab(TabIndex::from_usize(tab_idx));
+            // Sidebar: row 0 is top bar, main area starts at row 1
+            // Sidebar column is 0..sidebar_width
+            let sb_w = state.sidebar_width();
+            if mouse.column < sb_w && mouse.row >= 1 {
+                if let Some(tab) = crate::ui::sidebar::sidebar_tab_at(mouse.row, 
+                    ratatui::layout::Rect::new(0, 1, sb_w, 7)
+                ) {
+                    state.switch_tab(tab);
+                    return vec![];
                 }
             }
-            // List item click: row = 2 (top bar) + 1 (tab bar) + 2 (header) + offset
-            if mouse.row >= 5 {
-                let list_idx = (mouse.row - 5) as usize;
+
+            // Content list click
+            if mouse.row >= 2 && mouse.column >= sb_w {
+                let list_idx = (mouse.row - 2) as usize;
                 state.list_cursor = list_idx;
-                // Auto-select on click
                 if let Some(token) = state.trending.get(list_idx) {
                     let addr = token.address.clone();
                     let symbol = token.symbol.clone();
