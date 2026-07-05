@@ -3,6 +3,7 @@ use ratatui::style::Color;
 /// Semantic color tokens — raw values chosen at theme creation time.
 #[derive(Debug, Clone)]
 pub struct Theme {
+    // Core
     pub bg: Color,
     pub fg: Color,
     pub accent: Color,
@@ -13,9 +14,26 @@ pub struct Theme {
     pub muted: Color,
     pub border: Color,
     pub highlight: Color,
-    pub tab_active_bg: Color,
-    pub tab_inactive_bg: Color,
     pub card_bg: Color,
+
+    // Sidebar
+    pub sidebar_bg: Color,
+    pub sidebar_active: Color,
+    pub sidebar_hover: Color,
+
+    // Overlays (modal, command palette)
+    pub overlay: Color,
+    pub palette_bg: Color,
+    pub palette_fg: Color,
+    pub palette_highlight: Color,
+
+    // Marketcap / volume colors
+    pub large_cap: Color,
+    pub mid_cap: Color,
+    pub micro_cap: Color,
+    pub nano_cap: Color,
+    pub volume_high: Color,
+    pub volume_low: Color,
 }
 
 impl Theme {
@@ -32,9 +50,23 @@ impl Theme {
             muted: Color::Rgb(139, 148, 158),
             border: Color::Rgb(48, 54, 61),
             highlight: Color::Rgb(48, 54, 61),
-            tab_active_bg: Color::Rgb(22, 27, 34),
-            tab_inactive_bg: Color::Rgb(13, 17, 23),
             card_bg: Color::Rgb(22, 27, 34),
+
+            sidebar_bg: Color::Rgb(18, 22, 28),
+            sidebar_active: Color::Rgb(88, 166, 255),
+            sidebar_hover: Color::Rgb(33, 38, 45),
+
+            overlay: Color::Rgb(0, 0, 0),
+            palette_bg: Color::Rgb(22, 27, 34),
+            palette_fg: Color::Rgb(201, 209, 217),
+            palette_highlight: Color::Rgb(48, 54, 61),
+
+            large_cap: Color::Rgb(88, 166, 255),
+            mid_cap: Color::Rgb(63, 185, 80),
+            micro_cap: Color::Rgb(210, 153, 34),
+            nano_cap: Color::Rgb(248, 81, 73),
+            volume_high: Color::Rgb(63, 185, 80),
+            volume_low: Color::Rgb(139, 148, 158),
         }
     }
 
@@ -51,9 +83,23 @@ impl Theme {
             muted: Color::Rgb(120, 100, 160),
             border: Color::Rgb(80, 50, 120),
             highlight: Color::Rgb(60, 20, 100),
-            tab_active_bg: Color::Rgb(20, 10, 40),
-            tab_inactive_bg: Color::Rgb(10, 5, 20),
             card_bg: Color::Rgb(20, 10, 40),
+
+            sidebar_bg: Color::Rgb(15, 8, 30),
+            sidebar_active: Color::Rgb(0, 255, 136),
+            sidebar_hover: Color::Rgb(30, 15, 50),
+
+            overlay: Color::Rgb(0, 0, 0),
+            palette_bg: Color::Rgb(20, 10, 40),
+            palette_fg: Color::Rgb(240, 240, 240),
+            palette_highlight: Color::Rgb(60, 20, 100),
+
+            large_cap: Color::Rgb(0, 200, 255),
+            mid_cap: Color::Rgb(0, 255, 136),
+            micro_cap: Color::Rgb(255, 200, 0),
+            nano_cap: Color::Rgb(255, 50, 100),
+            volume_high: Color::Rgb(0, 255, 100),
+            volume_low: Color::Rgb(120, 100, 160),
         }
     }
 
