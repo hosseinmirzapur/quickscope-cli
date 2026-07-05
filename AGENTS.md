@@ -21,16 +21,19 @@ QuickScope is a **Rust-based terminal user interface (TUI)** for memecoin alpha 
 
 | Phase | Status |
 |---|---|
-| Brainstorming & design | ✅ Complete — see `docs/superpowers/specs/2026-07-05-quickscope-design.md` |
-| Implementation plan | ⏳ Pending — `docs/plans/` (use `writing-plans` skill) |
-| Scaffolding (Cargo, dirs, stubs) | ⏳ Pending |
-| Data layer (GMGN + Alph AI + DEX Screener) | ⏳ Pending |
-| Alpha filter engine | ⏳ Pending |
-| Paper trade engine + risk | ⏳ Pending |
-| TUI (7 tabs + widgets) | ⏳ Pending |
-| Learning engine (tuner + LLM) | ⏳ Pending |
-| Storage (SQLite) | ⏳ Pending |
-| Tests + polish | ⏳ Pending |
+| Brainstorming & design | ✅ Complete — `docs/superpowers/specs/2026-07-05-quickscope-design.md` |
+| Implementation plan | ✅ Complete — `docs/superpowers/plans/2026-07-05-quickscope-implementation-plan.md` |
+| Scaffolding (Cargo, dirs, stubs) | ✅ Complete |
+| Storage (SQLite, positions, config, cache) | ✅ Complete |
+| Data — GMGN client (via gmgn-cli subprocess) | ✅ Complete |
+| Data — Alph AI client (REST + WebSocket skeleton) | ✅ Complete |
+| Data — DEX Screener client + DataOrchestrator merge | ✅ Complete |
+| Alpha Filter engine (feature vector, 6-category scoring, rug, modes, narrative) | ✅ Complete |
+| Paper Trade Engine (simulator, risk manager, TP/SL monitor) | ✅ Complete |
+| Learning Engine (auto-tuner, discrimination analyzer, LLM providers) | ✅ Complete |
+| TUI Core (AppState, responsive event loop, theme system, 9 shared widgets) | ✅ Complete |
+| TUI Tabs (all 7 — Dashboard, Scanner, Analyzer, Trade, Journal, Strategy, Settings) | ✅ Complete |
+| Integration, polish, docs | ✅ Complete — 103 tests, all docs updated |
 
 ---
 
@@ -82,11 +85,11 @@ Detailed responsibilities: see `docs/architecture.md`.
 
 ## Data Sources
 
-| Source | Role | Auth | Docs |
-|---|---|---|---|
-| **GMGN API** (primary) | Trending, trenches, token info/security/holders, portfolio, track | `GMGN_API_KEY` (Ed25519, read-only for v1) | `docs/api-reference/gmgn-endpoints.md` |
-| **Alph AI API** (secondary) | Twitter/X monitoring, WebSocket real-time, signals, smart wallets | `dex_cookie` (14-day browser cookie) | `docs/api-reference/alph-ai-endpoints.md` |
-| **DEX Screener** (tertiary) | Trending/boosts cross-reference | None (free) | `docs/api-reference/dex-screener.md` |
+| Source | Role | Auth | Notes |
+|---|---|---|---|---|
+| **GMGN** (primary) | Trending, trenches, token info/security, smart money, pricing | Ed25519 keypair (handled by `gmgn-cli` subprocess) | QuickScope calls `gmgn-cli` as subprocess, not raw HTTP. Ed25519 signing required. See `docs/api-reference/gmgn-endpoints.md`. |
+| **Alph AI** (secondary) | Twitter/X monitoring, real-time WS, signals, smart wallets | `ALPH_DEX_COOKIE` (14-day browser cookie) | Fills GMGN's Twitter gap. REST + WebSocket. See `docs/api-reference/alph-ai-endpoints.md`. |
+| **DEX Screener** (tertiary) | Trending/boosts cross-reference | None (free) | Boosts conviction multiplier. See `docs/api-reference/dex-screener.md`. |
 
 ---
 
