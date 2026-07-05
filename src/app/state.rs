@@ -189,7 +189,7 @@ impl AppState {
 
     /// Get the current sidebar width based on collapsed state.
     pub fn sidebar_width(&self) -> u16 {
-        if self.sidebar_collapsed { 3 } else { 7 }
+        if self.sidebar_collapsed { 3 } else { 16 }
     }
 }
 
