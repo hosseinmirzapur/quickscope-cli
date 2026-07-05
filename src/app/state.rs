@@ -81,9 +81,15 @@ impl AppState {
             selected_position_id: None,
             alpha_report: None,
             notifications: Vec::new(),
+            active_toast: None,
+            toast_remaining_ms: 0,
             theme_preset: ThemePreset::Dark,
             show_modal: false,
             modal_message: String::new(),
+            show_command_palette: false,
+            palette_filter: String::new(),
+            palette_cursor: 0,
+            sidebar_collapsed: false,
             notification: None,
             status_message: "Ready — press ? for help".to_string(),
             input_buffer: String::new(),
@@ -100,11 +106,21 @@ impl AppState {
         self.scroll_offset = 0;
     }
 
-    /// Move list cursor up/down
+    /// Move list cursor up/down with bounds clamping
     pub fn move_cursor(&mut self, delta: isize) {
+        let max_len = self.trending.len().max(1).saturating_sub(1);
         let new = self.list_cursor as isize + delta;
         if new >= 0 {
-            self.list_cursor = new as usize;
+            self.list_cursor = (new as usize).min(max_len);
+        } else {
+            self.list_cursor = 0;
+        }
+        // Auto-scroll: adjust scroll_offset so cursor is visible
+        let visible = self.terminal_size.1.saturating_sub(6) as usize; // rough visible rows
+        if self.list_cursor < self.scroll_offset {
+            self.scroll_offset = self.list_cursor;
+        } else if self.list_cursor >= self.scroll_offset + visible {
+            self.scroll_offset = self.list_cursor.saturating_sub(visible) + 1;
         }
     }
 
@@ -116,7 +132,21 @@ impl AppState {
     /// Queue a notification (appears as toast overlay)
     pub fn notify(&mut self, msg: &str) {
         self.notifications.push(msg.to_string());
+        self.active_toast = Some(msg.to_string());
+        self.toast_remaining_ms = 4000;
         self.notification = Some(msg.to_string());
+    }
+
+    /// Tick toasts down each frame
+    pub fn tick_toasts(&mut self) {
+        if self.active_toast.is_some() {
+            if self.toast_remaining_ms > 33 {
+                self.toast_remaining_ms = self.toast_remaining_ms.saturating_sub(33);
+            } else {
+                self.active_toast = None;
+                self.toast_remaining_ms = 0;
+            }
+        }
     }
 
     /// Show a modal dialog
@@ -128,6 +158,38 @@ impl AppState {
     /// Dismiss modal
     pub fn dismiss_modal(&mut self) {
         self.show_modal = false;
+    }
+
+    /// Return trending tokens filtered by the current search input buffer.
+    /// If no search is active, returns the full list.
+    pub fn filtered_trending(&self) -> Vec<&TrendingToken> {
+        if self.input_active && !self.input_buffer.is_empty() {
+            let q = self.input_buffer.to_lowercase();
+            self.trending.iter()
+                .filter(|t| t.symbol.to_lowercase().contains(&q) || t.name.to_lowercase().contains(&q))
+                .collect()
+        } else {
+            self.trending.iter().collect()
+        }
+    }
+
+    /// Toggle the command palette.
+    pub fn toggle_command_palette(&mut self) {
+        self.show_command_palette = !self.show_command_palette;
+        if self.show_command_palette {
+            self.palette_filter.clear();
+            self.palette_cursor = 0;
+        }
+    }
+
+    /// Toggle sidebar collapsed state.
+    pub fn toggle_sidebar(&mut self) {
+        self.sidebar_collapsed = !self.sidebar_collapsed;
+    }
+
+    /// Get the current sidebar width based on collapsed state.
+    pub fn sidebar_width(&self) -> u16 {
+        if self.sidebar_collapsed { 3 } else { 7 }
     }
 }
 
