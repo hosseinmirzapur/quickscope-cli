@@ -6,7 +6,7 @@
 
 [![Rust](https://img.shields.io/badge/Rust-2021-edition?logo=rust&style=flat-square)]()
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)]()
-[![Tests](https://img.shields.io/badge/tests-104%20passing-success?style=flat-square)]()
+[![Tests](https://img.shields.io/badge/tests-103%20passing-success?style=flat-square)]()
 [![Status](https://img.shields.io/badge/status-alpha-yellow?style=flat-square)]()
 
 <img src="https://img.shields.io/badge/TUI-ratatui%20%7C%20crossterm-ff6b6b?style=flat-square" />
@@ -81,12 +81,17 @@
 <td width="50%">
 
 ### 🎨 Terminal UI
-- **7 tabs**: Dashboard, Scanner, Analyzer, Trade Terminal, Journal, Strategy & Learning, Settings
+- **7 tabs** with persistent **sidebar** (VS Code-style activity bar)
 - **2 themes**: Dark (OpenCode-inspired) & Degen Mode (neon)
-- Vim-like navigation (`j`/`k`, number keys for tabs)
-- Mouse support, modal dialogs, notification toasts
+- **Command palette** (`Ctrl+P`) for quick navigation and actions
+- **Mouse support**: sidebar clicks, list selection, scroll wheel
+- **Clear-backed modals** (SweetAlert-style overlay with backdrop)
+- **Toast notifications** with auto-dismiss (4s)
+- **Marketcap/volume-first display** — abbreviated with color coding
+- **Collapsible sidebar** (`Ctrl+B`) for more content space
+- **Auto-refresh every 10s** for real-time feel
+- Arrow-key navigation with PageUp/PageDown
 - Full keyboard shortcut system (`?` for help)
-- Portfolio overview, real-time PnL, status bar
 
 </td>
 </tr>
@@ -145,60 +150,67 @@ QUICKSCOPE_LOG_LEVEL=info
 
 | Key | Action | Key | Action |
 |---|---|---|---|
-| `1`–`7` | Switch tab | `j` / `↓` | Move cursor down |
-| `Tab` | Next tab | `k` / `↑` | Move cursor up |
-| `Shift+Tab` | Previous tab | `Enter` | Select / View detail |
-| `?` | Toggle help modal | `Esc` | Close modal / Back |
-| `r` | Refresh data | `q` | Quit |
+| `↑` / `↓` | Navigate lists | `Enter` | Select / View detail |
+| `PageUp` / `PageDown` | Scroll faster | `Esc` | Close modal / Back |
+| `Tab` / `Shift+Tab` | Next/Previous tab | `Ctrl+P` | Command palette |
+| `?` | Toggle help modal | `Ctrl+B` | Toggle sidebar |
+| `r` | Refresh data | `q` / `Ctrl+C` | Quit |
 | `b` | Paper buy | `s` | Paper sell |
-| `w` | Toggle watchlist | `Ctrl+E` | Emergency exit all |
+| `Space` | Toggle watchlist | `Ctrl+E` | Emergency exit all |
 
 ### Tab Overview
 
-| Tab | Key | Purpose |
+Tabs are accessible via the **persistent sidebar** (left edge) or keyboard shortcuts:
+
+| Tab | Sidebar Icon | Purpose |
 |---|---|---|
-| **Dashboard** | `1` | Portfolio snapshot + live trending list |
-| **Scanner** | `2` | Browse trending tokens, filter, select for analysis |
-| **Analyzer** | `3` | Deep-dive: kline, security, holders, smart money, Alpha Score |
-| **Trade** | `4` | Open/close paper positions, TP/SL, quick actions |
-| **Journal** | `5` | Trade history, session stats, win rate |
-| **Strategy** | `6` | Auto-tune weights, LLM post-mortem |
-| **Settings** | `7` | API keys, risk profile, display preferences |
+| **Dashboard** | ⬡ | Portfolio snapshot + live trending list |
+| **Scanner** | ⌕ | Browse trending tokens, filter, select for analysis |
+| **Analyzer** | ◎ | Deep-dive: kline, security, holders, smart money, Alpha Score |
+| **Trade** | ⟠ | Open/close paper positions, TP/SL, quick actions |
+| **Journal** | ☰ | Trade history, session stats, win rate |
+| **Strategy** | ⚙ | Auto-tune weights, LLM post-mortem |
+| **Settings** | ◆ | API keys, risk profile, display preferences |
 
 ---
 
 ## 🏗️ Architecture
 
-```
-                    ┌──────────────────────────────────────────────────────────────┐
-                    │                    QuickScope TUI (ratatui)                   │
-                    │  ┌─────────┐ ┌─────────┐ ┌────────┐ ┌──────┐ ┌──────────┐   │
-                    │  │Dashboard│ │Scanner  │ │Analyzer│ │Trade │ │Strategy …│   │
-                    │  └────┬────┘ └────┬────┘ └───┬────┘ └──┬───┘ └────┬─────┘   │
-                    │       └───────────┴──────────┴─────────┴──────────┘          │
-                    └───────────────────────┬──────────────────────────────────────┘
-                                            │
-                            ┌───────────────┴───────────────┐
-                            │         AppState + update()    │
-                            │       (Elm/TEA event loop)     │
-                            └───────────────┬───────────────┘
-                                            │
-              ┌─────────────────────────────┼─────────────────────────────┐
-              │                             │                             │
-              ▼                             ▼                             ▼
-    ┌─────────────────┐          ┌───────────────────┐         ┌──────────────────┐
-    │  DataOrchestrator│          │   Alpha Filter     │         │  Trade Engine    │
-    │  (GMGN + Alph AI│◄────────►│   (Feature Vector  │◄───────►│  (Simulator +    │
-    │   + DEX Screen) │          │   → Scoring → Mode)│         │   Risk Manager)  │
-    └─────────────────┘          └───────────────────┘         └────────┬─────────┘
-              │                                                         │
-              ▼                                                         ▼
-    ┌─────────────────────┐                                 ┌──────────────────────┐
-    │  Learning Engine     │                                 │  SQLite Storage      │
-    │  (Auto-Tuner + LLM)  │◄───────────────────────────────│  (positions, journal, │
-    └─────────────────────┘                                 │   config, cache)      │
-                                                             └──────────────────────┘
-```
+	```
+	                    ┌──────────────────────────────────────────────────────────────┐
+	                    │                    QuickScope TUI (ratatui)                   │
+	                    │  ┌──┬──────────────────────────────────────────────────┐    │
+	                    │  │⬡│  Dashboard                                        │    │
+	                    │  │⌕│  Scanner                                          │    │
+	                    │  │◎│  Analyzer                                         │    │
+	                    │  │⟠│  Trade Terminal    ← sidebar | content layout     │    │
+	                    │  │☰│  Journal                                           │    │
+	                    │  │⚙│  Strategy                                          │    │
+	                    │  │◆│  Settings                                          │    │
+	                    │  └──┴──────────────────────────────────────────────────┘    │
+	                    └───────────────────────┬──────────────────────────────────────┘
+	                                            │
+	                            ┌───────────────┴───────────────┐
+	                            │         AppState + update()    │
+	                            │       (Elm/TEA event loop)     │
+	                            └───────────────┬───────────────┘
+	                                            │
+	              ┌─────────────────────────────┼─────────────────────────────┐
+	              │                             │                             │
+	              ▼                             ▼                             ▼
+	    ┌─────────────────┐          ┌───────────────────┐         ┌──────────────────┐
+	    │  DataOrchestrator│          │   Alpha Filter     │         │  Trade Engine    │
+	    │  (GMGN + Alph AI│◄────────►│   (Feature Vector  │◄───────►│  (Simulator +    │
+	    │   + DEX Screen) │          │   → Scoring → Mode)│         │   Risk Manager)  │
+	    └─────────────────┘          └───────────────────┘         └────────┬─────────┘
+	              │                                                         │
+	              ▼                                                         ▼
+	    ┌─────────────────────┐                                 ┌──────────────────────┐
+	    │  Learning Engine     │                                 │  SQLite Storage      │
+	    │  (Auto-Tuner + LLM)  │◄───────────────────────────────│  (positions, journal, │
+	    └─────────────────────┘                                 │   config, cache)      │
+	                                                             └──────────────────────┘
+	```
 
 ### Threading Model
 
@@ -432,18 +444,21 @@ quickscope/
     │   ├── mod.rs          # update() function
     │   ├── state.rs        # AppState
     │   └── input.rs        # Key/mouse dispatch
-    ├── ui/                 # Terminal UI
-    │   ├── mod.rs
-    │   ├── theme.rs        # Dark + Degen themes
-    │   ├── layout.rs       # Root layout + tab dispatch
-    │   └── widgets/        # 7 tab implementations
-    │       ├── dashboard.rs
-    │       ├── scanner.rs
-    │       ├── analyzer.rs
-    │       ├── trade_terminal.rs
-    │       ├── journal.rs
-    │       ├── strategy.rs
-    │       └── settings.rs
+	├── ui/                 # Terminal UI
+	│   ├── mod.rs
+	│   ├── theme.rs        # Dark + Degen themes (18 semantic tokens)
+	│   ├── layout.rs       # Root layout (sidebar | content) + overlays
+	│   ├── sidebar.rs      # Persistent tab sidebar (VS Code-style)
+	│   ├── format.rs       # Marketcap/volume abbreviation + color coding
+	│   └── widgets/        # 7 tab implementations
+	│       ├── command_palette.rs  # Ctrl+P overlay with search/filter
+	│       ├── dashboard.rs
+	│       ├── scanner.rs
+	│       ├── analyzer.rs
+	│       ├── trade_terminal.rs
+	│       ├── journal.rs
+	│       ├── strategy.rs
+	│       └── settings.rs
     ├── data/               # Data sources
     │   ├── models.rs       # All domain types
     │   ├── orchestrator.rs # 3-source merge facade
@@ -495,7 +510,7 @@ cargo test --lib storage::positions
 # Run with output
 cargo test --lib -- --nocapture
 
-# Full test suite (104+ tests)
+# Full test suite (103+ tests)
 ```
 
 ### Test Coverage
