@@ -1,5 +1,3 @@
-use crate::data::models::*;
-
 /// Simulate a paper buy — calculates how many tokens you'd receive.
 pub fn simulate_buy(
     amount_sol: f64,
@@ -31,7 +29,7 @@ pub fn simulate_buy(
 
 /// Simulate a paper sell — calculates PnL.
 pub fn simulate_sell(
-    amount_tokens: f64,
+    _amount_tokens: f64,
     current_price_usd: f64,
     entry_price_usd: f64,
     slippage_percent: f64,
