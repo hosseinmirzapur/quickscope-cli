@@ -32,16 +32,11 @@ async fn main() -> Result<()> {
 
     dotenvy::dotenv().ok();
 
-    // Load API keys from environment
-    let gmgn_api_key = std::env::var("GMGN_API_KEY")
-        .unwrap_or_else(|_| {
-            tracing::warn!("GMGN_API_KEY not set — API calls will fail");
-            String::new()
-        });
+    // Load Alph AI cookie from environment (GMGN auth handled by gmgn-cli)
     let alph_dex_cookie = std::env::var("ALPH_DEX_COOKIE").unwrap_or_default();
 
     // Build the data orchestrator (shared across async tasks)
-    let orchestrator = Arc::new(DataOrchestrator::new(gmgn_api_key, alph_dex_cookie));
+    let orchestrator = Arc::new(DataOrchestrator::new(alph_dex_cookie));
 
     // Terminal setup
     enable_raw_mode()?;

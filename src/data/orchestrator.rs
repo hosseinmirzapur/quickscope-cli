@@ -17,12 +17,9 @@ pub struct DataOrchestrator {
 }
 
 impl DataOrchestrator {
-    pub fn new(
-        gmgn_api_key: String,
-        alph_dex_cookie: String,
-    ) -> Self {
+    pub fn new(alph_dex_cookie: String) -> Self {
         Self {
-            gmgn: GmgnClient::new(gmgn_api_key),
+            gmgn: GmgnClient,
             alph_ai: AlphAiClient::new(alph_dex_cookie),
             dex: DexScreenerClient::new(),
         }
@@ -234,10 +231,7 @@ mod tests {
 
     #[test]
     fn test_orchestrator_creation() {
-        let orch = DataOrchestrator::new(
-            "gmgn_demo".to_string(),
-            "test_cookie".to_string(),
-        );
+        let orch = DataOrchestrator::new("test_cookie".to_string());
         assert!(orch.dex.base_url().contains("dexscreener"));
     }
 }
