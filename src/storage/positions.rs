@@ -4,6 +4,7 @@ use sqlx::SqlitePool;
 use uuid::Uuid;
 
 /// Insert a new paper position. Returns the new position ID.
+#[allow(clippy::too_many_arguments)]
 pub async fn insert_position(
     pool: &SqlitePool,
     token_address: &str,

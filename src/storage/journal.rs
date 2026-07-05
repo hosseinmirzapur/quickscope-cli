@@ -3,6 +3,7 @@ use chrono::Utc;
 use sqlx::SqlitePool;
 
 /// Upsert daily risk tracking for today.
+#[allow(clippy::too_many_arguments)]
 pub async fn upsert_daily_risk(
     pool: &SqlitePool,
     date: &str,
@@ -158,6 +159,7 @@ pub struct WatchlistRow {
 // ── Tuning History ──────────────────────────────────────────────
 
 /// Log an auto-tune run.
+#[allow(clippy::too_many_arguments)]
 pub async fn log_tuning_run(
     pool: &SqlitePool,
     sample_size: i64,

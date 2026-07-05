@@ -16,7 +16,8 @@ pub fn analyze_discrimination(
         return Vec::new();
     }
 
-    let features: Vec<(&str, fn(&FeatureVector) -> f64)> = vec![
+    type FeatureExtractor = (&'static str, fn(&FeatureVector) -> f64);
+    let features: Vec<FeatureExtractor> = vec![
         ("momentum_volume_1h", |fv| fv.volume_1h.unwrap_or(0.0)),
         ("momentum_swaps_1h", |fv| fv.swaps_1h.unwrap_or(0) as f64),
         ("momentum_hot_level", |fv| fv.hot_level.unwrap_or(0) as f64),
