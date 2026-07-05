@@ -91,13 +91,13 @@ async fn main() -> Result<()> {
         }
     });
 
-    // ── Background: auto-refresh loop (B3) ──────────────────────
+    // ── Background: auto-refresh loop (10s interval) ─────────────
     {
         let orch = Arc::clone(&orchestrator);
         let tx = data_tx.clone();
         tokio::spawn(async move {
             loop {
-                tokio::time::sleep(Duration::from_secs(30)).await;
+                tokio::time::sleep(Duration::from_secs(10)).await;
                 if let Ok(tokens) = orch.fetch_trending().await {
                     let _ = tx.send(DataEvent::TrendingUpdated(tokens));
                 }
