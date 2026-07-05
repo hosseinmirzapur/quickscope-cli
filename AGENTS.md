@@ -33,6 +33,7 @@ QuickScope is a **Rust-based terminal user interface (TUI)** for memecoin alpha 
 | Learning Engine (auto-tuner, discrimination analyzer, LLM providers) | ✅ Complete |
 | TUI Core (AppState, responsive event loop, theme system, 9 shared widgets) | ✅ Complete |
 | TUI Tabs (all 7 — Dashboard, Scanner, Analyzer, Trade, Journal, Strategy, Settings) | ✅ Complete |
+| UI Redesign (sidebar, command palette, marketcap/volume focus, toast, Clear modals) | ✅ Complete |
 | Integration, polish, docs | ✅ Complete — 103 tests, all docs updated |
 
 ---
@@ -71,7 +72,7 @@ GMGN does NOT support IPv6. If `gmgn` calls fail with 401/403, check IPv6 first.
 src/
 ├── main.rs              # Entry point, TUI event loop
 ├── app/                 # AppState, tab manager, input router
-├── ui/                  # ratatui rendering: 7 tabs + reusable widgets + theme
+├── ui/                  # ratatui rendering: sidebar + 7 tabs + reusable widgets + theme + format
 ├── data/                # DataOrchestrator + GMGN + Alph AI + DEX Screener clients
 ├── alpha/               # Alpha Filter: scoring, rug detection, narrative, modes
 ├── trade/               # Paper trade engine: simulator, position, monitor, risk
@@ -156,6 +157,11 @@ Copy `.env.example` and fill in values.
 
 ## Conventions
 
+- **UI Layout:** `ui/layout.rs` uses sidebar | content split (not a top tab bar). Sidebar in `ui/sidebar.rs`.
+- **Overlays:** All modals use the `Modal` widget (with `Clear` backdrop). Command palette at `ui/widgets/command_palette.rs`.
+- **Marketcap display:** Always use `format_marketcap()` + `marketcap_color()` from `ui/format.rs` for token values. Primary columns: marketcap, volume, change %. Price is secondary/muted.
+- **Toast notifications:** Use `state.notify()` to queue toasts. They auto-dismiss after 4s. Rendered via `Toast` widget.
+- **Key bindings:** Arrow keys (`↑`/`↓`) for navigation. No VIM-style `j`/`k`. `Ctrl+P` for command palette, `Ctrl+B` for sidebar toggle.
 - **Error handling:** `anyhow::Result` for application code, `thiserror` for library-style error enums in `data/` and `alpha/`.
 - **Async:** `tokio` runtime. All I/O (HTTP, WebSocket, SQLite) is async.
 - **State sharing:** `Arc<tokio::sync::Mutex<AppState>>` for shared mutable state across tasks.
