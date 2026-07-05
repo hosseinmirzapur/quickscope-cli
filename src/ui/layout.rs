@@ -91,6 +91,14 @@ fn render_top_bar(frame: &mut Frame, area: Rect, state: &AppState, theme: &Theme
         } else {
             Span::raw("")
         },
+        // Loading indicator
+        if state.loading_trending {
+            Span::styled("│ ◌ FETCH ", Style::default().fg(theme.warning))
+        } else if state.loading_token_detail {
+            Span::styled("│ ◌ LOAD ", Style::default().fg(theme.accent))
+        } else {
+            Span::raw("")
+        },
         Span::raw(format!("│ {}", state.status_message)),
     ]);
 

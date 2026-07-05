@@ -56,6 +56,10 @@ pub struct AppState {
     pub input_active: bool,
     pub scroll_offset: usize,
     pub list_cursor: usize,
+    
+    // Loading state per data source
+    pub loading_trending: bool,
+    pub loading_token_detail: bool,
 }
 
 impl AppState {
@@ -96,6 +100,8 @@ impl AppState {
             input_active: false,
             scroll_offset: 0,
             list_cursor: 0,
+            loading_trending: false,
+            loading_token_detail: false,
         }
     }
 

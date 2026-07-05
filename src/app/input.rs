@@ -168,6 +168,7 @@ pub fn handle_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
                     let addr = token.address.clone();
                     let symbol = token.symbol.clone();
                     state.set_status(&format!("Loading {}...", symbol));
+                    state.loading_token_detail = true;
                     return vec![AppCommand::FetchTokenDetail(addr)];
                 }
             }
@@ -183,6 +184,7 @@ pub fn handle_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
     // r → refresh
     if key.code == KeyCode::Char('r') {
         state.set_status("Refreshing data...");
+        state.loading_trending = true;
         return vec![AppCommand::FetchTrending];
     }
 
