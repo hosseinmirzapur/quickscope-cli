@@ -1,6 +1,6 @@
 use ratatui::{
     layout::Rect,
-    style::{Color, Style, Stylize},
+    style::{Color, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Paragraph, Widget},
     buffer::Buffer,
@@ -15,14 +15,14 @@ pub struct ContextMenu<'a> {
 }
 
 impl Widget for ContextMenu<'_> {
-    fn render(self, area: Rect, _buf: &mut Buffer) {
+    fn render(self, _area: Rect, _buf: &mut Buffer) {
         // TODO: full context menu rendering with click zones
         // For now, this is a stub — the mouse handler will be wired in A3.
     }
 }
 
 /// Render a context menu inline (for when we need to show it outside a Widget context).
-pub fn render_context_menu(items: &[&str], cursor: usize, x: u16, y: u16, area: Rect) -> impl Widget {
+pub fn render_context_menu(items: &[&str], cursor: usize, _x: u16, _y: u16, _area: Rect) -> impl Widget {
     // Returns a block with items, cursor highlighted
     let mut lines = Vec::new();
     for (i, item) in items.iter().enumerate() {

@@ -1,6 +1,6 @@
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Modifier, Style, Stylize},
+    style::{Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Paragraph},
     Frame,
@@ -48,7 +48,7 @@ fn render_alpha_config(frame: &mut Frame, area: Rect, state: &AppState, theme: &
     frame.render_widget(Paragraph::new(text).block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(theme.border))), area);
 }
 
-fn render_llm_panel(frame: &mut Frame, area: Rect, state: &AppState, theme: &Theme) {
+fn render_llm_panel(frame: &mut Frame, area: Rect, _state: &AppState, theme: &Theme) {
     let text = Text::from(vec![
         Line::from(vec![
             Span::styled(" LLM Post-Mortem", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),

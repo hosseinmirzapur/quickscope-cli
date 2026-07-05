@@ -1,6 +1,6 @@
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Modifier, Style, Stylize},
+    style::{Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
@@ -54,7 +54,7 @@ fn render_positions(frame: &mut Frame, area: Rect, state: &AppState, theme: &The
             Span::styled(" No open positions", Style::default().fg(theme.muted)),
         ))]
     } else {
-        state.open_positions.iter().enumerate().map(|(i, pos)| {
+        state.open_positions.iter().map(|pos| {
             let sel = Some(pos.id.as_str()) == state.selected_position_id.as_deref();
             let s = if sel { Style::default().bg(theme.highlight).fg(theme.accent) } else { Style::default().fg(theme.fg) };
             let pnl = pos.pnl_sol.unwrap_or(0.0);
@@ -67,8 +67,8 @@ fn render_positions(frame: &mut Frame, area: Rect, state: &AppState, theme: &The
                 Span::raw(format!(" {} SOL", pos.amount_sol)),
                 Span::styled(format!(" {} ", pos.mode.as_str()), Style::default().fg(theme.warning)),
                 Span::styled(format!(" PnL:{}", pnl_str), Style::default().fg(pc)),
-                if pos.tp_percent.is_some() { Span::raw(format!(" TP:{:.0}%", pos.tp_percent.unwrap())) } else { Span::raw("") },
-                if pos.sl_percent.is_some() { Span::raw(format!(" SL:{:.0}%", pos.sl_percent.unwrap())) } else { Span::raw("") },
+                if let Some(tp) = pos.tp_percent { Span::raw(format!(" TP:{:.0}%", tp)) } else { Span::raw("") },
+                if let Some(sl) = pos.sl_percent { Span::raw(format!(" SL:{:.0}%", sl)) } else { Span::raw("") },
             ]))
         }).collect()
     };

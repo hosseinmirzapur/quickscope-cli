@@ -17,7 +17,7 @@ pub struct ProgressBar<'a> {
 impl Widget for ProgressBar<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let w = self.width.min(area.width);
-        let filled = ((self.ratio * w as f64).round() as u16).max(0);
+        let filled = (self.ratio * w as f64).round() as u16;
         let color = if self.ratio > 0.5 {
             lerp_color(self.bad_color, self.good_color, (self.ratio - 0.5) * 2.0)
         } else {

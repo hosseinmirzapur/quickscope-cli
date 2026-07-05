@@ -19,7 +19,7 @@ impl RiskManager {
     pub fn check_pre_trade(
         &self,
         amount_sol: f64,
-        mode: &TradeMode,
+        _mode: &TradeMode,
         sizing: &SizingBounds,
         open_positions_count: u64,
         same_token_count: u64,
