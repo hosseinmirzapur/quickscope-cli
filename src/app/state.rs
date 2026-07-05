@@ -37,11 +37,17 @@ pub struct AppState {
 
     // Notification queue
     pub notifications: Vec<String>,
+    pub active_toast: Option<String>,
+    pub toast_remaining_ms: u32,
 
     // UI state
     pub theme_preset: ThemePreset,
     pub show_modal: bool,
     pub modal_message: String,
+    pub show_command_palette: bool,
+    pub palette_filter: String,
+    pub palette_cursor: usize,
+    pub sidebar_collapsed: bool,
     pub notification: Option<String>,
     pub status_message: String,
 
