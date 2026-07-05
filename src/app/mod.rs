@@ -23,7 +23,7 @@ pub fn update(state: &mut AppState, event: AppEvent) -> Vec<AppCommand> {
             state.tick_toasts();
             vec![]
         }
-        AppEvent::Data(data_event) => handle_data_event(state, data_event),
+        AppEvent::Data(data_event) => handle_data_event(state, *data_event),
     }
 }
 
@@ -31,12 +31,14 @@ pub fn update(state: &mut AppState, event: AppEvent) -> Vec<AppCommand> {
 fn handle_data_event(state: &mut AppState, event: DataEvent) -> Vec<AppCommand> {
     match event {
         DataEvent::TrendingUpdated(tokens) => {
+            state.loading_trending = false;
             state.trending = tokens;
             state.set_status(&format!("Loaded {} trending tokens", state.trending.len()));
         }
         DataEvent::TokenLoaded(detail) => {
+            state.loading_token_detail = false;
             let symbol = detail.token.symbol.clone();
-            state.selected_token = Some(detail);
+            state.selected_token = Some(*detail);
             state.set_status(&format!("Loaded {}", symbol));
             // Auto-switch to Analyzer tab
             if state.active_tab != TabIndex::Analyzer {

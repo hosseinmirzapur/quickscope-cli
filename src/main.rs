@@ -10,20 +10,16 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Notify;
 
-use quickscope::{
-    app::{self, AppState},
-    alpha,
-    data::{
-        models::{AppCommand, AppEvent, DataEvent},
-        orchestrator::DataOrchestrator,
-    },
-    learning,
-    storage::{self, DbManager},
-    trade::TradeEngine,
-    ui,
+use quickscope::app;
+use quickscope::app::AppState;
+use quickscope::data::{
+    models::{AppCommand, AppEvent, DataEvent},
+    orchestrator::DataOrchestrator,
 };
+use quickscope::storage::DbManager;
+use quickscope::trade::TradeEngine;
+use quickscope::ui;
 
-const DB_PATH: &str = "~/.config/quickscope/data.db";
 
 #[derive(Parser)]
 #[command(name = "quickscope", about = "Solana memecoin alpha hunting TUI")]
@@ -55,7 +51,7 @@ async fn main() -> Result<()> {
     if let Ok(config) = quickscope::storage::config::load_alpha_config(&pool).await {
         state.alpha_config = config;
     }
-    if let Ok(positions) = quickscope::storage::positions::get_open_positions(&pool).await {
+    if let Ok(_positions) = quickscope::storage::positions::get_open_positions(&pool).await {
         // Note: positions are PositionRows, not PaperPositions — mapping happens in Wave C
         state.open_positions.clear();
     }
@@ -137,7 +133,7 @@ async fn main() -> Result<()> {
         }
 
         while let Ok(event) = data_rx.try_recv() {
-            app::update(&mut state, AppEvent::Data(event));
+            app::update(&mut state, AppEvent::Data(Box::new(event)));
         }
     }
 
@@ -176,7 +172,7 @@ async fn dispatch_commands(
                 AppCommand::FetchTokenDetail(addr) => {
                     let a = addr.clone();
                     match orch.fetch_token_detail(&a).await {
-                        Ok(d) => { let _ = tx.send(DataEvent::TokenLoaded(d)); Ok(()) }
+                        Ok(d) => { let _ = tx.send(DataEvent::TokenLoaded(Box::new(d))); Ok(()) }
                         Err(e) => { let _ = tx.send(DataEvent::ConnectionError("token_detail".into(), e.to_string())); Err(()) }
                     }
                 }
@@ -206,14 +202,14 @@ async fn dispatch_commands(
                 }
 
                 // ── Trade commands ───────────────────────────────
-                AppCommand::PaperBuy { token_address, amount_sol, mode, tp_percent, sl_percent } => {
+                AppCommand::PaperBuy { token_address, amount_sol, mode: _, tp_percent, sl_percent } => {
                     let mut eng = engine.lock().await;
                     // Need token detail for trade — fetch it
                     match orch.fetch_token_detail(&token_address).await {
                         Ok(detail) => {
                             let config = quickscope::storage::config::load_alpha_config(&db_pool).await.unwrap_or_default();
                             let report = quickscope::alpha::analyze_token(&detail, &config);
-                            let (tp, sl) = (tp_percent.unwrap_or_else(|| {
+                            let (_tp, _sl) = (tp_percent.unwrap_or_else(|| {
                                 quickscope::alpha::exit_params_for_mode(&report.mode).0
                             }), sl_percent.unwrap_or_else(|| {
                                 quickscope::alpha::exit_params_for_mode(&report.mode).1

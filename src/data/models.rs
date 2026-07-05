@@ -646,7 +646,7 @@ impl Default for Portfolio {
 #[derive(Debug, Clone)]
 pub enum DataEvent {
     TrendingUpdated(Vec<TrendingToken>),
-    TokenLoaded(TokenDetail),
+    TokenLoaded(Box<TokenDetail>),
     KlineUpdated(String, Vec<KlineCandle>),
     SmartMoneyActivity(Vec<SmartMoneyTrade>),
     SignalReceived(TokenSignal),
@@ -666,7 +666,7 @@ pub enum AppEvent {
     Mouse(crossterm::event::MouseEvent),
     Resize(u16, u16),
     Tick,
-    Data(DataEvent),
+    Data(Box<DataEvent>),
 }
 
 // ── App Command (update → side effects) ─────────────────────────
