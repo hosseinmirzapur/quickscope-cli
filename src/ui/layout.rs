@@ -1,7 +1,7 @@
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style, Stylize},
-    text::{Line, Span, Text},
+    text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph, Tabs},
     Frame,
 };
@@ -98,30 +98,15 @@ fn render_tab_bar(frame: &mut Frame, area: Rect, state: &AppState, theme: &Theme
 
 /// Content area — dispatches to the current tab's render function.
 fn render_content(frame: &mut Frame, area: Rect, state: &AppState, theme: &Theme) {
-    // Placeholder: render "Active Tab: X" message in content area.
-    // Actual tab content implemented in Phase 10.
-    let tab_name = state.active_tab.label();
-    let text = Text::from(vec![
-        Line::from(""),
-        Line::from(vec![
-            Span::styled(
-                format!("  {} Tab", tab_name),
-                Style::default().fg(theme.accent).add_modifier(Modifier::BOLD),
-            ),
-        ]),
-        Line::from(""),
-        Line::from(vec![
-            Span::styled(
-                "  Tab content coming in Phase 10...",
-                Style::default().fg(theme.muted),
-            ),
-        ]),
-    ]);
-
-    let block = Block::default()
-        .borders(Borders::NONE);
-
-    frame.render_widget(Paragraph::new(text).block(block), area);
+    match state.active_tab {
+        TabIndex::Dashboard => super::widgets::dashboard::render(frame, area, state, theme),
+        TabIndex::Scanner => super::widgets::scanner::render(frame, area, state, theme),
+        TabIndex::Analyzer => super::widgets::analyzer::render(frame, area, state, theme),
+        TabIndex::TradeTerminal => super::widgets::trade_terminal::render(frame, area, state, theme),
+        TabIndex::Journal => super::widgets::journal::render(frame, area, state, theme),
+        TabIndex::Strategy => super::widgets::strategy::render(frame, area, state, theme),
+        TabIndex::Settings => super::widgets::settings::render(frame, area, state, theme),
+    }
 
     // Render modal if active
     if state.show_modal {
