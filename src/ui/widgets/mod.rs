@@ -5,3 +5,24 @@ pub mod trade_terminal;
 pub mod journal;
 pub mod strategy;
 pub mod settings;
+
+// Shared widgets
+pub mod toast;
+pub mod sparkline;
+pub mod progress_bar;
+pub mod tag;
+pub mod table;
+pub mod search_bar;
+pub mod chart;
+pub mod modal;
+pub mod context_menu;
+
+pub use toast::Toast;
+pub use sparkline::SparklineWidget;
+pub use progress_bar::ProgressBar;
+pub use tag::Tag;
+pub use table::Table;
+pub use search_bar::SearchBar;
+pub use modal::Modal;
+pub use chart::Chart;
+pub use context_menu::ContextMenu;

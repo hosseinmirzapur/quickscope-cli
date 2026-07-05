@@ -1,13 +1,14 @@
 use anyhow::Result;
 use clap::Parser;
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event},
+    event::{DisableMouseCapture, EnableMouseCapture, Event},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use std::io;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::Notify;
 
 use quickscope::{
     app::{self, AppState},
@@ -29,59 +30,78 @@ struct Cli {
 async fn main() -> Result<()> {
     tracing_subscriber::fmt().init();
     let _cli = Cli::parse();
-
     dotenvy::dotenv().ok();
 
-    // Load Alph AI cookie from environment (GMGN auth handled by gmgn-cli)
     let alph_dex_cookie = std::env::var("ALPH_DEX_COOKIE").unwrap_or_default();
-
-    // Build the data orchestrator (shared across async tasks)
     let orchestrator = Arc::new(DataOrchestrator::new(alph_dex_cookie));
 
-    // Terminal setup
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
-
     let backend = ratatui::backend::CrosstermBackend::new(stdout);
     let mut terminal = ratatui::Terminal::new(backend)?;
 
     let mut state = AppState::new();
+    let redraw = Arc::new(Notify::new());
 
-    // Channel: background tasks → main loop
+    // Channels
     let (data_tx, mut data_rx) = tokio::sync::mpsc::unbounded_channel::<DataEvent>();
+    let (event_tx, mut event_rx) = tokio::sync::mpsc::unbounded_channel::<Event>();
 
-    // Main event loop
+    // ── Background: crossterm event reader ──────────────────────
+    tokio::spawn(async move {
+        loop {
+            if crossterm::event::poll(Duration::from_millis(16)).unwrap_or(false) {
+                if let Ok(event) = crossterm::event::read() {
+                    if event_tx.send(event).is_err() {
+                        break;
+                    }
+                }
+            }
+            tokio::task::yield_now().await;
+        }
+    });
+
+    // ── Main loop ───────────────────────────────────────────────
     loop {
         if !state.running {
             break;
         }
 
-        // Render
         terminal.draw(|frame| {
             ui::render_ui(frame, &state);
         })?;
 
-        // Drain incoming data events (non-blocking)
-        while let Ok(event) = data_rx.try_recv() {
-            app::update(&mut state, AppEvent::Data(event));
+        tokio::select! {
+            biased;
+
+            Some(event) = event_rx.recv() => {
+                match event {
+                    Event::Key(key) => {
+                        let cmds = app::update(&mut state, AppEvent::Key(key));
+                        dispatch_commands(cmds, &orchestrator, &data_tx, &redraw);
+                    }
+                    Event::Mouse(mouse) => {
+                        let cmds = app::update(&mut state, AppEvent::Mouse(mouse));
+                        dispatch_commands(cmds, &orchestrator, &data_tx, &redraw);
+                    }
+                    Event::Resize(w, h) => {
+                        app::update(&mut state, AppEvent::Resize(w, h));
+                    }
+                    _ => {}
+                }
+            }
+
+            _ = redraw.notified() => {
+                // Data arrived — drain it and re-render
+            }
+
+            _ = tokio::time::sleep(Duration::from_millis(32)) => {}
         }
 
-        // Poll for crossterm input
-        if event::poll(Duration::from_millis(50))? {
-            match event::read()? {
-                Event::Key(key) => {
-                    let cmds = app::update(&mut state, AppEvent::Key(key));
-                    dispatch_commands(cmds, &orchestrator, &data_tx);
-                }
-                Event::Mouse(mouse) => {
-                    let _ = app::update(&mut state, AppEvent::Mouse(mouse));
-                }
-                Event::Resize(w, h) => {
-                    app::update(&mut state, AppEvent::Resize(w, h));
-                }
-                _ => {}
-            }
+        // Drain any pending data events before next frame
+        while let Ok(event) = data_rx.try_recv() {
+            app::update(&mut state, AppEvent::Data(event));
         }
     }
 
@@ -93,120 +113,73 @@ async fn main() -> Result<()> {
         DisableMouseCapture,
     )?;
     terminal.show_cursor()?;
-
     Ok(())
 }
 
-/// Execute AppCommands by spawning async background tasks.
-/// Each task calls the orchestrator and pushes DataEvents back through the channel.
+// ── Command dispatcher ──────────────────────────────────────────
+
 fn dispatch_commands(
     commands: Vec<AppCommand>,
     orchestrator: &Arc<DataOrchestrator>,
     data_tx: &tokio::sync::mpsc::UnboundedSender<DataEvent>,
+    redraw: &Arc<Notify>,
 ) {
     for cmd in commands {
         let orch = Arc::clone(orchestrator);
         let tx = data_tx.clone();
+        let notify = redraw.clone();
 
         tokio::spawn(async move {
-            match cmd {
+            let result = match cmd {
                 AppCommand::FetchTrending => {
                     match orch.fetch_trending().await {
-                        Ok(tokens) => {
-                            let count = tokens.len();
-                            let _ = tx.send(DataEvent::TrendingUpdated(tokens));
-                            tracing::info!("Fetched {} trending tokens", count);
-                        }
-                        Err(e) => {
-                            let _ = tx.send(DataEvent::ConnectionError(
-                                "fetch_trending".into(),
-                                e.to_string(),
-                            ));
-                            tracing::error!("Failed to fetch trending: {}", e);
-                        }
+                        Ok(tokens) => { let _ = tx.send(DataEvent::TrendingUpdated(tokens)); Ok(()) }
+                        Err(e) => { let _ = tx.send(DataEvent::ConnectionError("fetch_trending".into(), e.to_string())); Err(()) }
                     }
                 }
 
                 AppCommand::FetchTokenDetail(address) => {
                     match orch.fetch_token_detail(&address).await {
-                        Ok(detail) => {
-                            let symbol = detail.token.symbol.clone();
-                            let _ = tx.send(DataEvent::TokenLoaded(detail));
-                            tracing::info!("Fetched token detail for {}", symbol);
-                        }
-                        Err(e) => {
-                            let _ = tx.send(DataEvent::ConnectionError(
-                                "fetch_token_detail".into(),
-                                e.to_string(),
-                            ));
-                            tracing::error!("Failed to fetch token detail: {}", e);
-                        }
+                        Ok(detail) => { let _ = tx.send(DataEvent::TokenLoaded(detail)); Ok(()) }
+                        Err(e) => { let _ = tx.send(DataEvent::ConnectionError("fetch_token_detail".into(), e.to_string())); Err(()) }
                     }
                 }
 
                 AppCommand::FetchKline(address, resolution, from, to) => {
                     match orch.fetch_kline(&address, &resolution, from, to).await {
-                        Ok(candles) => {
-                            let _ = tx.send(DataEvent::KlineUpdated(address, candles));
-                        }
-                        Err(e) => {
-                            let _ = tx.send(DataEvent::ConnectionError(
-                                "fetch_kline".into(),
-                                e.to_string(),
-                            ));
-                            tracing::error!("Failed to fetch kline: {}", e);
-                        }
+                        Ok(candles) => { let _ = tx.send(DataEvent::KlineUpdated(address, candles)); Ok(()) }
+                        Err(e) => { let _ = tx.send(DataEvent::ConnectionError("fetch_kline".into(), e.to_string())); Err(()) }
                     }
                 }
 
-                AppCommand::ShowNotification(msg) => {
-                    let _ = tx.send(DataEvent::ConnectionError("notification".into(), msg));
+                AppCommand::FetchSmartMoney => {
+                    match orch.fetch_smart_money_trades(20).await {
+                        Ok(trades) => { let _ = tx.send(DataEvent::SmartMoneyActivity(trades)); Ok(()) }
+                        Err(e) => { let _ = tx.send(DataEvent::ConnectionError("fetch_smart_money".into(), e.to_string())); Err(()) }
+                    }
                 }
 
-                AppCommand::ShowModal(_msg) => {
-                    // Modal is handled synchronously in AppState
+                AppCommand::FetchSignals => {
+                    match orch.fetch_signals_gmgn().await {
+                        Ok(signals) => { for sig in signals { let _ = tx.send(DataEvent::SignalReceived(sig)); } Ok(()) }
+                        Err(e) => { let _ = tx.send(DataEvent::ConnectionError("fetch_signals".into(), e.to_string())); Err(()) }
+                    }
                 }
 
-                AppCommand::SwitchTab(_) => {
-                    // Handled synchronously in update()
+                AppCommand::FetchTrenches(token_type) => {
+                    match orch.fetch_trenches(&token_type).await {
+                        Ok(tokens) => { let _ = tx.send(DataEvent::TrenchesUpdated(tokens)); Ok(()) }
+                        Err(e) => { let _ = tx.send(DataEvent::ConnectionError("fetch_trenches".into(), e.to_string())); Err(()) }
+                    }
                 }
 
-                AppCommand::EmergencyExitAll => {
-                    tracing::warn!("Emergency exit all (paper positions)");
-                    // TODO: iterate open positions and sell them
+                _ => {
+                    tracing::warn!("{:?} not yet wired — coming in Wave B", cmd);
+                    Ok(())
                 }
-
-                AppCommand::AddToWatchlist(_addr) => {
-                    // TODO: storage-backed
-                }
-
-                AppCommand::RemoveFromWatchlist(_addr) => {
-                    // TODO: storage-backed
-                }
-
-                AppCommand::ToggleKillSwitch => {
-                    // TODO: toggle in storage
-                }
-
-                AppCommand::RunPostMortem(_start, _end) => {
-                    // TODO: LLM post-mortem
-                }
-
-                AppCommand::RunAutoTune => {
-                    // TODO: auto-tune
-                }
-
-                AppCommand::SaveAlphaConfig(_config) => {
-                    // TODO: persist config
-                }
-
-                AppCommand::PaperBuy { .. } => {
-                    // TODO: execute via TradeEngine
-                }
-
-                AppCommand::PaperSell { .. } => {
-                    // TODO: execute via TradeEngine
-                }
+            };
+            if result.is_ok() {
+                notify.notify_one();
             }
         });
     }

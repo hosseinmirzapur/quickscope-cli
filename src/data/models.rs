@@ -697,6 +697,10 @@ pub enum AppCommand {
     RunPostMortem(String, String),
     RunAutoTune,
     SaveAlphaConfig(AlphaConfig),
+    /// New commands for Wave A/B
+    FetchSmartMoney,
+    FetchSignals,
+    FetchTrenches(String),
 }
 
 // ── Tab Index ──────────────────────────────────────────────────
