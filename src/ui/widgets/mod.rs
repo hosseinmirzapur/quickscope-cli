@@ -16,8 +16,10 @@ pub mod search_bar;
 pub mod chart;
 pub mod modal;
 pub mod context_menu;
+pub mod command_palette;
 
 pub use toast::Toast;
+pub use toast::ToastStyle;
 pub use sparkline::SparklineWidget;
 pub use progress_bar::ProgressBar;
 pub use tag::Tag;
