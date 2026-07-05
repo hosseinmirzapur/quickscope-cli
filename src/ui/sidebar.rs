@@ -30,7 +30,7 @@ const TAB_META: [TabMeta; 7] = [
 /// `sidebar_width` is the width allocated to the sidebar (6 expanded, 3 collapsed).
 pub fn render_sidebar(frame: &mut Frame, area: Rect, state: &AppState, theme: &Theme, sidebar_width: u16) {
     let collapsed = sidebar_width < 5;
-    let mut lines: Vec<Line> = Vec::with_capacity(TabIndex::COUNT as usize);
+    let mut lines: Vec<Line> = Vec::with_capacity(TabIndex::COUNT);
 
     // Spacer before first tab
     lines.push(Line::from(Span::raw("")));
@@ -52,7 +52,7 @@ pub fn render_sidebar(frame: &mut Frame, area: Rect, state: &AppState, theme: &T
             .bg(bg)
             .add_modifier(if is_active { Modifier::BOLD } else { Modifier::empty() });
 
-        let icon = Span::styled(if collapsed { meta.icon } else { meta.icon }, icon_style);
+        let icon = Span::styled(meta.icon, icon_style);
 
         let mut spans = vec![indicator, icon];
 
@@ -91,12 +91,12 @@ pub fn render_sidebar(frame: &mut Frame, area: Rect, state: &AppState, theme: &T
 
 /// Get the next/previous tab index based on the current active tab.
 pub fn next_tab(current: usize) -> usize {
-    (current + 1) % TabIndex::COUNT as usize
+    (current + 1) % TabIndex::COUNT
 }
 
 pub fn prev_tab(current: usize) -> usize {
     if current == 0 {
-        TabIndex::COUNT as usize - 1
+        TabIndex::COUNT - 1
     } else {
         current - 1
     }
@@ -108,9 +108,9 @@ pub fn sidebar_tab_at(row: u16, area: Rect) -> Option<TabIndex> {
     // Adjust: the sidebar area starts at some y offset
     let rel_y = row.saturating_sub(area.y);
     // Row 0 = spacer, rows 1-7 = tabs
-    if rel_y >= 1 && rel_y <= 7 {
+    if (1..=7).contains(&rel_y) {
         let idx = (rel_y - 1) as usize;
-        if idx < TabIndex::COUNT as usize {
+        if idx < TabIndex::COUNT {
             return Some(TabIndex::from_usize(idx));
         }
     }
