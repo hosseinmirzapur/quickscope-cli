@@ -75,43 +75,43 @@ Communication: `tokio::mpsc` channels route `DataEvent`s, `TradeEvent`s, and `LL
 ### 4.1 Overall Layout
 
 ```
-┌─────────────────────────────────────────────────┐
-│  ⚡ QuickScope    [Portfolio: 50.00 SOL]  [●REC] │  ← Status bar (top)
-├─────────────────────────────────────────────────┤
-│ [Dashboard] [Scanner] [Analyzer] [Trade] [Journal]│  ← Tab bar
-│ [Strategy]  [Settings]              [?] [🌙] [⚙]│  ← Help, theme, settings
-├─────────────────────────────────────────────────┤
-│                                                  │
-│              Active Tab Content                   │
-│          (takes up ~85% of screen)                │
-│                                                  │
-├─────────────────────────────────────────────────┤
-│ ↑↓ scroll  ←→ switch  Enter select  q quit     │  ← Keybinding hints
-└─────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│  ⚡ QuickScope  Balance: 50.00 SOL  PnL: +0.00 ...  │  ← Status bar (top, full width)
+├──┬───────────────────────────────────────────────────┤
+│⬡ │                                                   │
+│⌕ │                                                   │
+│◎ │              Active Tab Content                    │
+│⟠ │          (sidebar | content layout)                │
+│☰ │                                                   │
+│⚙ │                                                   │
+│◆ │                                                   │
+├──┴───────────────────────────────────────────────────┤
+│  ↑↓:Navigate  r:Refresh  Ctrl+P:Commands  q:Quit    │  ← Keybinding hints (bottom)
+└──────────────────────────────────────────────────────┘
 ```
 
 ### 4.2 Navigation Model
 
-**Keyboard (vim-like + OpenCode-style):**
-- `Tab` / `Shift+Tab` — Cycle tabs left/right
-- `1-7` — Jump directly to tab by number
-- `j/k` or `↑/↓` — Move focus within lists/tables
-- `h/l` or `←/→` — Move between panels
+**Keyboard (OpenCode-style):**
+- `↑` / `↓` — Move focus within lists/tables (no VIM-style `j`/`k`)
+- `PageUp` / `PageDown` — Scroll lists faster
+- `Tab` / `Shift+Tab` — Cycle tabs in sidebar
 - `Enter` — Select item / drill into detail
-- `Escape` — Back / close popup
-- `/` — Search/filter
+- `Escape` — Back / close popup / dismiss modal
+- `/` — Search/filter (live filtering of token lists)
 - `Space` — Toggle watch/star
-- `m` — Open modal
 - `?` — Help overlay (context-sensitive per tab)
 - `q` or `Ctrl+C` — Quit (with confirmation modal if trades active)
+- `Ctrl+P` — Command palette (searchable overlay with 14 commands)
+- `Ctrl+B` — Toggle sidebar collapsed/expanded
 - `Ctrl+E` — Emergency exit all positions
+- `r` — Refresh data
 
 **Mouse (full support via crossterm):**
-- Click tabs to switch
+- Click sidebar icons to switch tabs
 - Click rows to select/focus
 - Scroll wheel for lists
 - Right-click for context menu (copy address, open in browser, analyze)
-- Drag to resize split panels
 
 ### 4.3 Theme System
 
@@ -177,15 +177,17 @@ Theme struct uses semantic color tokens (`primary`, `success`, `danger`, `warnin
 
 | Widget | Description |
 |---|---|
+| `Modal` | Centered overlay with `Clear` backdrop (SweetAlert-style). Used for help, confirmations, emergency exit |
+| `CommandPalette` | Ctrl+P searchable overlay with 14 commands — tab switching, actions, toggles |
+| `Toast` | Top-right notification with 4s auto-dismiss. Info/Success/Warning/Error styles |
 | `Sparkline` | Mini chart from K-line data (block chars) |
 | `ProgressBar` | Horizontal bar with color coding |
 | `Tag` | Colored chip (e.g., `[Pump.fun]`, `[CTO]`, `[RENOUNCED]`) |
-| `Modal` | Centered overlay with blur backdrop |
 | `ContextMenu` | Right-click popup menu |
 | `Table` | Sortable, filterable, scrollable table with headers |
 | `SearchBar` | `/` activated inline search with live filtering |
-| `Notification` | Toast slide-in from top-right (alert, success, warning) |
 | `Chart` | Larger OHLCV candlestick + volume (unicode box drawing) |
+| `Sidebar` | Persistent VS Code-style activity bar with 7 tab icons, collapsible via Ctrl+B |
 
 ---
 
