@@ -19,7 +19,8 @@ pub fn update(state: &mut AppState, event: AppEvent) -> Vec<AppCommand> {
             vec![]
         }
         AppEvent::Tick => {
-            // Periodic tick — can trigger auto-refresh
+            // Periodic tick — toast decay
+            state.tick_toasts();
             vec![]
         }
         AppEvent::Data(data_event) => handle_data_event(state, data_event),
