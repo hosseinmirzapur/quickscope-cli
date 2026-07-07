@@ -643,24 +643,36 @@ cargo test --lib -- --nocapture
 
 ## 🛣️ Roadmap
 
-### v0.2 — Near Term
-- [ ] Real GMGN/Alph AI API integration tests (requires keys in CI)
-- [ ] Tab polish: Scanner (filters), Analyzer (kline chart), Trade Terminal (order books)
-- [ ] Notification system (toast → sound on signal)
-- [ ] Settings persistence + theme switching in Settings tab
+### ✅ v0.2 — Completed
+- [x] **Web server** (Axum REST API + WebSocket with 12 endpoints)
+- [x] **Web frontend** (Leptos SPA with 7 tabs, paper trading, alpha analysis)
+- [x] **Shared AppCore** (extracted business logic used by both TUI and web)
+- [x] **Real-time updates** (WebSocket broadcast for prices, signals, trades)
+- [x] Settings persistence + theme switching in Settings tab (basic)
+- [x] Tab polish: Scanner mode selector, Analyzer detail view
 
-### v0.3 — Medium Term
-- [ ] Watchlist with price alerts
-- [ ] Multi-period backtesting (replay historical data through alpha filter)
-- [ ] Advanced charts (sparkline, volume bars, order flow)
-- [ ] Session export (CSV/JSON)
-- [ ] Configurable risk profiles
+### v0.3 — Near Term
+- [ ] **Web UI polish**: kline charts (lightweight-charts), token search, sortable tables
+- [ ] **WebSocket reconnection** on frontend with exponential backoff
+- [ ] **Notification system** (toast → sound on signal) for both TUI and web
+- [ ] **Real GMGN/Alph AI API integration tests** (requires keys in CI)
+- [ ] **Settings persistence**: save theme, log level, risk config to DB
+- [ ] **Watchlist with price alerts** (poll-based or WebSocket-triggered)
+
+### v0.4 — Medium Term
+- [ ] **Multi-period backtesting** (replay historical data through alpha filter)
+- [ ] **Advanced charts** (sparkline, volume bars, order flow) in both TUI and web
+- [ ] **Session export** (CSV/JSON) for trades and journal
+- [ ] **Configurable risk profiles** (presets for different strategies)
+- [ ] **API documentation explorer** (Swagger/OpenAPI integration)
 
 ### v1.0 — Long Term
-- [ ] User-defined custom filter rules (DSL)
-- [ ] Portfolio tracking (connect/sync real wallet, read-only)
-- [ ] Plugin system for data sources
-- [ ] Community signal sharing
+- [ ] **User-defined custom filter rules** (DSL for alpha conditions)
+- [ ] **Portfolio tracking** (connect/sync real wallet, read-only)
+- [ ] **Plugin system** for data sources
+- [ ] **Community signal sharing** (opt-in)
+- [ ] **Authentication** for web mode (local auth, optional)
+- [ ] **Mobile-responsive** web UI
 
 ---
 
