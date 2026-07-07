@@ -107,11 +107,7 @@ mod tests {
             },
         ];
 
-        let prompt = build_post_mortem_prompt(
-            "2026-07-01", "2026-07-05",
-            2, 1, 1, 0.85,
-            &trades,
-        );
+        let prompt = build_post_mortem_prompt("2026-07-01", "2026-07-05", 2, 1, 1, 0.85, &trades);
 
         assert!(prompt.contains("PEPE"));
         assert!(prompt.contains("WIF"));

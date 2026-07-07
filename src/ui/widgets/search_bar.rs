@@ -1,9 +1,9 @@
 use ratatui::{
+    buffer::Buffer,
     layout::Rect,
     style::{Color, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph, Widget},
-    buffer::Buffer,
 };
 
 /// An inline search bar activated by `/` key.
@@ -38,7 +38,9 @@ impl Widget for SearchBar<'_> {
         let block = Block::default()
             .borders(Borders::ALL)
             .border_style(Style::default().fg(Color::Rgb(48, 54, 61)));
-        let para = Paragraph::new(text).block(block).style(Style::default().bg(bg));
+        let para = Paragraph::new(text)
+            .block(block)
+            .style(Style::default().bg(bg));
         para.render(area, buf);
     }
 }

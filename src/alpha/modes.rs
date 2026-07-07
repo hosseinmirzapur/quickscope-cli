@@ -57,10 +57,10 @@ pub fn sizing_for_mode(mode: &TradeMode) -> SizingBounds {
 /// Return default TP/SL percentages for a mode.
 pub fn exit_params_for_mode(mode: &TradeMode) -> (f64, f64) {
     match mode {
-        TradeMode::Explode => (200.0, 60.0),   // TP +200%, SL -60%
-        TradeMode::Alpha => (100.0, 40.0),      // TP +100%, SL -40%
-        TradeMode::Scalp => (20.0, 15.0),        // TP +20%, SL -15%
-        TradeMode::Fallback => (10.0, 20.0),     // TP +10%, SL -20%
+        TradeMode::Explode => (200.0, 60.0), // TP +200%, SL -60%
+        TradeMode::Alpha => (100.0, 40.0),   // TP +100%, SL -40%
+        TradeMode::Scalp => (20.0, 15.0),    // TP +20%, SL -15%
+        TradeMode::Fallback => (10.0, 20.0), // TP +10%, SL -20%
     }
 }
 

@@ -91,10 +91,10 @@ mod tests {
     #[test]
     fn test_simulate_buy() {
         let result = simulate_buy(
-            0.5,     // 0.5 SOL
-            0.0001,  // price $0.0001
-            150.0,   // SOL price $150
-            3.0,     // 3% slippage
+            0.5,       // 0.5 SOL
+            0.0001,    // price $0.0001
+            150.0,     // SOL price $150
+            3.0,       // 3% slippage
             500_000.0, // liquidity
         );
         assert!(result.tokens_received > 0.0);
@@ -105,11 +105,8 @@ mod tests {
     #[test]
     fn test_simulate_buy_impact_warning() {
         let result = simulate_buy(
-            100.0,   // 100 SOL (large)
-            0.01,
-            150.0,
-            3.0,
-            200_000.0, // low liquidity
+            100.0, // 100 SOL (large)
+            0.01, 150.0, 3.0, 200_000.0, // low liquidity
         );
         assert!(result.impact_warning);
     }
@@ -117,13 +114,13 @@ mod tests {
     #[test]
     fn test_simulate_sell_profit() {
         let result = simulate_sell(
-            100_000.0,   // tokens to sell
-            0.0002,      // current price
-            0.0001,      // entry price
-            3.0,         // slippage
-            0.5,         // SOL invested
-            100_000.0,   // tokens owned
-            100.0,       // sell 100%
+            100_000.0, // tokens to sell
+            0.0002,    // current price
+            0.0001,    // entry price
+            3.0,       // slippage
+            0.5,       // SOL invested
+            100_000.0, // tokens owned
+            100.0,     // sell 100%
         );
         assert!(result.pnl_usd > 0.0);
         assert!(result.pnl_percent > 0.0);
@@ -133,13 +130,7 @@ mod tests {
     #[test]
     fn test_simulate_sell_partial() {
         let result = simulate_sell(
-            100_000.0,
-            0.0002,
-            0.0001,
-            3.0,
-            0.5,
-            100_000.0,
-            50.0, // sell 50%
+            100_000.0, 0.0002, 0.0001, 3.0, 0.5, 100_000.0, 50.0, // sell 50%
         );
         assert!(result.is_partial);
         assert!(result.tokens_sold == 50_000.0);

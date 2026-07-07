@@ -9,11 +9,12 @@ pub fn detect_rug(fv: &FeatureVector) -> RugReport {
     if fv.rug_ratio > 0.30 {
         flags.push(RugFlag {
             name: "high_rug_ratio".to_string(),
-            severity: if fv.rug_ratio > 0.50 { RugSeverity::Critical } else { RugSeverity::High },
-            detail: format!(
-                "Rug ratio is {:.1}% (threshold: 30%)",
-                fv.rug_ratio * 100.0
-            ),
+            severity: if fv.rug_ratio > 0.50 {
+                RugSeverity::Critical
+            } else {
+                RugSeverity::High
+            },
+            detail: format!("Rug ratio is {:.1}% (threshold: 30%)", fv.rug_ratio * 100.0),
             value: fv.rug_ratio,
             threshold: 0.30,
         });
@@ -31,7 +32,11 @@ pub fn detect_rug(fv: &FeatureVector) -> RugReport {
     if fv.dev_team_hold_rate > 0.05 {
         flags.push(RugFlag {
             name: "high_dev_allocation".to_string(),
-            severity: if fv.dev_team_hold_rate > 0.15 { RugSeverity::High } else { RugSeverity::Medium },
+            severity: if fv.dev_team_hold_rate > 0.15 {
+                RugSeverity::High
+            } else {
+                RugSeverity::Medium
+            },
             detail: format!(
                 "Dev holds {:.1}% of supply (threshold: 5%)",
                 fv.dev_team_hold_rate * 100.0

@@ -39,10 +39,12 @@ impl DbManager {
             .collect();
 
         for stmt in statements {
-            sqlx::query(stmt)
-                .execute(&pool)
-                .await
-                .with_context(|| format!("running schema statement: {}...", &stmt[..stmt.len().min(60)]))?;
+            sqlx::query(stmt).execute(&pool).await.with_context(|| {
+                format!(
+                    "running schema statement: {}...",
+                    &stmt[..stmt.len().min(60)]
+                )
+            })?;
         }
 
         tracing::info!(db_path = %db_path, "Database initialized");
@@ -52,9 +54,7 @@ impl DbManager {
 
     /// Run a health check query.
     pub async fn health_check(&self) -> Result<()> {
-        let _: (i32,) = sqlx::query_as("SELECT 1")
-            .fetch_one(&self.pool)
-            .await?;
+        let _: (i32,) = sqlx::query_as("SELECT 1").fetch_one(&self.pool).await?;
         Ok(())
     }
 }

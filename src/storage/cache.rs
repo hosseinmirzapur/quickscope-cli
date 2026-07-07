@@ -75,9 +75,7 @@ pub async fn purge_expired(pool: &SqlitePool, table: &str) -> Result<u64> {
         table
     );
 
-    let result = sqlx::query(&query)
-        .execute(pool)
-        .await?;
+    let result = sqlx::query(&query).execute(pool).await?;
 
     Ok(result.rows_affected())
 }
@@ -99,21 +97,33 @@ mod tests {
         let (db, _dir) = setup_db().await;
 
         // Nothing cached yet
-        let cached = get_cached(&db.pool, "gmgn_cache", "/market/rank", "abc123").await.unwrap();
+        let cached = get_cached(&db.pool, "gmgn_cache", "/market/rank", "abc123")
+            .await
+            .unwrap();
         assert!(cached.is_none());
 
         // Set cache
         set_cached(
-            &db.pool, "gmgn_cache", "/market/rank", "abc123",
-            r#"{"data":[{"symbol":"PEPE"}]}"#, 300,
-        ).await.unwrap();
+            &db.pool,
+            "gmgn_cache",
+            "/market/rank",
+            "abc123",
+            r#"{"data":[{"symbol":"PEPE"}]}"#,
+            300,
+        )
+        .await
+        .unwrap();
 
         // Get cached
-        let cached = get_cached(&db.pool, "gmgn_cache", "/market/rank", "abc123").await.unwrap();
+        let cached = get_cached(&db.pool, "gmgn_cache", "/market/rank", "abc123")
+            .await
+            .unwrap();
         assert!(cached.unwrap().contains("PEPE"));
 
         // Wrong params_hash → miss
-        let cached2 = get_cached(&db.pool, "gmgn_cache", "/market/rank", "xyz").await.unwrap();
+        let cached2 = get_cached(&db.pool, "gmgn_cache", "/market/rank", "xyz")
+            .await
+            .unwrap();
         assert!(cached2.is_none());
     }
 
@@ -122,13 +132,14 @@ mod tests {
         let (db, _dir) = setup_db().await;
 
         // Set with very short TTL
-        set_cached(
-            &db.pool, "alphai_cache", "/test", "h1",
-            r#"{}"#, 0,
-        ).await.unwrap();
+        set_cached(&db.pool, "alphai_cache", "/test", "h1", r#"{}"#, 0)
+            .await
+            .unwrap();
 
         // Should be expired immediately
-        let cached = get_cached(&db.pool, "alphai_cache", "/test", "h1").await.unwrap();
+        let cached = get_cached(&db.pool, "alphai_cache", "/test", "h1")
+            .await
+            .unwrap();
         assert!(cached.is_none());
 
         // Purge should remove it

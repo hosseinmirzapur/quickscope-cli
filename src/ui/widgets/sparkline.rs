@@ -1,8 +1,8 @@
 use ratatui::{
+    buffer::Buffer,
     layout::Rect,
     style::{Color, Style},
-    widgets::{Widget},
-    buffer::Buffer,
+    widgets::Widget,
 };
 
 /// A mini sparkline chart using unicode block characters (▁▂▃▄▅▆▇█).
@@ -19,7 +19,9 @@ impl Widget for SparklineWidget {
         }
         let n = (area.width as usize).min(self.data.len());
         let data: Vec<f64> = self.data[self.data.len() - n..].to_vec();
-        let max = self.max.unwrap_or_else(|| data.iter().cloned().fold(0.0_f64, f64::max));
+        let max = self
+            .max
+            .unwrap_or_else(|| data.iter().cloned().fold(0.0_f64, f64::max));
         if max <= 0.0 {
             return;
         }

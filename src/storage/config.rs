@@ -9,7 +9,7 @@ pub async fn load_alpha_config(pool: &SqlitePool) -> Result<AlphaConfig> {
     let row: (f64, f64, f64, f64, f64, f64, f64, f64, i32, i32, f64) = sqlx::query_as(
         "SELECT w_momentum, w_safety, w_holder, w_liquidity, w_dev, w_social, \
          hf_rug_ratio_max, hf_dev_hold_max, hf_wash_trading, hf_renounced_mint, \
-         hf_liquidity_min_usd FROM alpha_config WHERE id = 1"
+         hf_liquidity_min_usd FROM alpha_config WHERE id = 1",
     )
     .fetch_one(pool)
     .await?;
@@ -39,7 +39,7 @@ pub async fn save_alpha_config(pool: &SqlitePool, config: &AlphaConfig) -> Resul
          hf_rug_ratio_max = ?, hf_dev_hold_max = ?, \
          hf_wash_trading = ?, hf_renounced_mint = ?, \
          hf_liquidity_min_usd = ?, updated_at = ? \
-         WHERE id = 1"
+         WHERE id = 1",
     )
     .bind(config.w_momentum)
     .bind(config.w_safety)
@@ -60,12 +60,10 @@ pub async fn save_alpha_config(pool: &SqlitePool, config: &AlphaConfig) -> Resul
 
 /// Load a single setting by key.
 pub async fn get_setting(pool: &SqlitePool, key: &str) -> Result<Option<String>> {
-    let row: Option<(String,)> = sqlx::query_as(
-        "SELECT value FROM settings WHERE key = ?"
-    )
-    .bind(key)
-    .fetch_optional(pool)
-    .await?;
+    let row: Option<(String,)> = sqlx::query_as("SELECT value FROM settings WHERE key = ?")
+        .bind(key)
+        .fetch_optional(pool)
+        .await?;
     Ok(row.map(|r| r.0))
 }
 
@@ -74,7 +72,7 @@ pub async fn set_setting(pool: &SqlitePool, key: &str, value: &str) -> Result<()
     let updated_at = Utc::now().to_rfc3339();
     sqlx::query(
         "INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?) \
-         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at"
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
     )
     .bind(key)
     .bind(value)

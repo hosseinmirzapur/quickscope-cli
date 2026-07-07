@@ -7,11 +7,11 @@
 //!    (OpenAI, Anthropic, or local Ollama).
 
 pub mod analyzer;
-pub mod tuner;
 pub mod journal;
 pub mod llm;
+pub mod tuner;
 
 pub use analyzer::{analyze_discrimination, FeatureDiscrimination};
-pub use tuner::run_auto_tune;
 pub use journal::run_post_mortem;
 pub use llm::LlmProvider;
+pub use tuner::run_auto_tune;

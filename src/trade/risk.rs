@@ -27,7 +27,7 @@ impl RiskManager {
         // 1. Kill switch
         if self.state.kill_switch_active {
             return PreTradeCheckResult::Rejected(
-                "Kill switch active — trading disabled".to_string()
+                "Kill switch active — trading disabled".to_string(),
             );
         }
 
@@ -74,7 +74,7 @@ impl RiskManager {
         // 7. 2 daily wins warning
         if self.state.wins_today >= 2 {
             return PreTradeCheckResult::Warning(
-                "2 wins today — greed kills. Consider stopping.".to_string()
+                "2 wins today — greed kills. Consider stopping.".to_string(),
             );
         }
 
@@ -130,30 +130,33 @@ mod tests {
     #[test]
     fn test_approved_trade() {
         let rm = RiskManager::new();
-        let sizing = SizingBounds { min_sol: 0.1, max_sol: 0.5 };
-        let result = rm.check_pre_trade(
-            0.3, &TradeMode::Alpha, &sizing, 2, 0,
-        );
+        let sizing = SizingBounds {
+            min_sol: 0.1,
+            max_sol: 0.5,
+        };
+        let result = rm.check_pre_trade(0.3, &TradeMode::Alpha, &sizing, 2, 0);
         assert_eq!(result, PreTradeCheckResult::Approved);
     }
 
     #[test]
     fn test_rejected_amount_too_high() {
         let rm = RiskManager::new();
-        let sizing = SizingBounds { min_sol: 0.1, max_sol: 0.5 };
-        let result = rm.check_pre_trade(
-            5.0, &TradeMode::Alpha, &sizing, 2, 0,
-        );
+        let sizing = SizingBounds {
+            min_sol: 0.1,
+            max_sol: 0.5,
+        };
+        let result = rm.check_pre_trade(5.0, &TradeMode::Alpha, &sizing, 2, 0);
         assert!(matches!(result, PreTradeCheckResult::Rejected(_)));
     }
 
     #[test]
     fn test_rejected_max_positions() {
         let rm = RiskManager::new();
-        let sizing = SizingBounds { min_sol: 0.1, max_sol: 0.5 };
-        let result = rm.check_pre_trade(
-            0.3, &TradeMode::Alpha, &sizing, 5, 0,
-        );
+        let sizing = SizingBounds {
+            min_sol: 0.1,
+            max_sol: 0.5,
+        };
+        let result = rm.check_pre_trade(0.3, &TradeMode::Alpha, &sizing, 5, 0);
         assert!(matches!(result, PreTradeCheckResult::Rejected(_)));
     }
 
@@ -162,10 +165,11 @@ mod tests {
         let mut rm = RiskManager::new();
         rm.record_trade(0.5); // win
         rm.record_trade(0.3); // win
-        let sizing = SizingBounds { min_sol: 0.1, max_sol: 0.5 };
-        let result = rm.check_pre_trade(
-            0.3, &TradeMode::Alpha, &sizing, 2, 0,
-        );
+        let sizing = SizingBounds {
+            min_sol: 0.1,
+            max_sol: 0.5,
+        };
+        let result = rm.check_pre_trade(0.3, &TradeMode::Alpha, &sizing, 2, 0);
         assert!(matches!(result, PreTradeCheckResult::Warning(_)));
     }
 
@@ -176,10 +180,11 @@ mod tests {
         rm.record_trade(-6.0); // exceeds 5 SOL cap
         assert!(rm.state.kill_switch_active);
 
-        let sizing = SizingBounds { min_sol: 0.1, max_sol: 0.5 };
-        let result = rm.check_pre_trade(
-            0.3, &TradeMode::Alpha, &sizing, 0, 0,
-        );
+        let sizing = SizingBounds {
+            min_sol: 0.1,
+            max_sol: 0.5,
+        };
+        let result = rm.check_pre_trade(0.3, &TradeMode::Alpha, &sizing, 0, 0);
         assert!(matches!(result, PreTradeCheckResult::Rejected(_)));
     }
 

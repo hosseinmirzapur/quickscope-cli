@@ -48,21 +48,13 @@ impl Widget for Toast {
             // Fade opacity near end (simplified: shorter width)
             w = (w as f32 * (self.remaining_ms as f32 / 1000.0)) as u16;
         }
-        let toast_area = Rect::new(
-            area.x + area.width.saturating_sub(w + 2),
-            area.y,
-            w + 2,
-            1,
-        );
+        let toast_area = Rect::new(area.x + area.width.saturating_sub(w + 2), area.y, w + 2, 1);
         let text = Line::from(vec![
             Span::styled(
                 format!(" {} ", self.style.prefix()),
                 Style::default().fg(color).bg(Color::Rgb(30, 30, 30)),
             ),
-            Span::styled(
-                &self.message,
-                Style::default().fg(color),
-            ),
+            Span::styled(&self.message, Style::default().fg(color)),
         ]);
         let block = Block::default()
             .borders(Borders::ALL)

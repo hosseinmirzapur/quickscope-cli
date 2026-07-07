@@ -18,7 +18,11 @@ pub fn extract_feature_vector(detail: &TokenDetail) -> FeatureVector {
 
         liquidity_usd: detail.token.liquidity_usd,
         market_cap: detail.token.market_cap,
-        pool_exchange: detail.pool_info.as_ref().map(|p| p.exchange.clone()).unwrap_or_default(),
+        pool_exchange: detail
+            .pool_info
+            .as_ref()
+            .map(|p| p.exchange.clone())
+            .unwrap_or_default(),
         is_on_curve: detail.token.is_on_curve,
 
         rug_ratio: sec.rug_ratio,
@@ -47,7 +51,11 @@ pub fn extract_feature_vector(detail: &TokenDetail) -> FeatureVector {
         dexscr_ad: dev.dexscr_ad,
         dexscr_boost: dev.dexscr_boost,
 
-        has_social_links: detail.social_links.as_ref().map(|s| s.has_any()).unwrap_or(false),
+        has_social_links: detail
+            .social_links
+            .as_ref()
+            .map(|s| s.has_any())
+            .unwrap_or(false),
         dexscr_trending_bar: dev.dexscr_trending_bar,
         launchpad_platform: detail.token.launchpad_platform.clone(),
 

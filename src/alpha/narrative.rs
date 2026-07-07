@@ -2,15 +2,52 @@ use crate::data::models::TokenDetail;
 
 /// Known memecoin narratives and their trigger words.
 const NARRATIVES: &[(&str, &[&str])] = &[
-    ("AI Agent", &["ai", "agent", "artificial", "intelligence", "llm", "gpt", "neural"]),
-    ("Dog", &["dog", "shib", "inu", "doge", "hound", "woof", "puppy"]),
+    (
+        "AI Agent",
+        &[
+            "ai",
+            "agent",
+            "artificial",
+            "intelligence",
+            "llm",
+            "gpt",
+            "neural",
+        ],
+    ),
+    (
+        "Dog",
+        &["dog", "shib", "inu", "doge", "hound", "woof", "puppy"],
+    ),
     ("Cat", &["cat", "meow", "kitten", "feline", "purr", "mew"]),
     ("Frog", &["frog", "pepe", "peepo", "ribbit", "toad"]),
-    ("Political", &["trump", "biden", "maga", "president", "vote", "dem", "gop", "election"]),
+    (
+        "Political",
+        &[
+            "trump",
+            "biden",
+            "maga",
+            "president",
+            "vote",
+            "dem",
+            "gop",
+            "election",
+        ],
+    ),
     ("Gaming", &["game", "play", "mmo", "rpg", "gamer", "esport"]),
-    ("DeFi", &["defi", "finance", "swap", "yield", "farm", "stake", "lend", "borrow"]),
-    ("Meme Classic", &["meme", "dank", "based", "chad", "wojak", "giga"]),
-    ("Celebrity", &["elon", "musk", "celebrity", "famous", "kanye", "tate"]),
+    (
+        "DeFi",
+        &[
+            "defi", "finance", "swap", "yield", "farm", "stake", "lend", "borrow",
+        ],
+    ),
+    (
+        "Meme Classic",
+        &["meme", "dank", "based", "chad", "wojak", "giga"],
+    ),
+    (
+        "Celebrity",
+        &["elon", "musk", "celebrity", "famous", "kanye", "tate"],
+    ),
     ("SOL Ecosystem", &["sol", "solana", "spl", "lamport"]),
 ];
 
@@ -21,7 +58,9 @@ pub fn detect_narrative(detail: &TokenDetail) -> Option<String> {
         "{} {} {}",
         detail.token.name.to_lowercase(),
         detail.token.symbol.to_lowercase(),
-        detail.social_links.as_ref()
+        detail
+            .social_links
+            .as_ref()
             .and_then(|s| s.description.as_deref())
             .unwrap_or("")
             .to_lowercase(),
@@ -30,9 +69,7 @@ pub fn detect_narrative(detail: &TokenDetail) -> Option<String> {
     let mut best: Option<(&str, usize)> = None;
 
     for (narrative, keywords) in NARRATIVES {
-        let count = keywords.iter()
-            .filter(|kw| text.contains(*kw))
-            .count();
+        let count = keywords.iter().filter(|kw| text.contains(*kw)).count();
         if count > 0 && (best.is_none() || count > best.unwrap().1) {
             best = Some((narrative, count));
         }

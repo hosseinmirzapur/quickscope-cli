@@ -1,5 +1,5 @@
-use anyhow::Result;
 use crate::data::models::DataEvent;
+use anyhow::Result;
 
 /// Background task that monitors open positions for TP/SL triggers.
 ///

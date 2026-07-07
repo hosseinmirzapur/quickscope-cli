@@ -56,9 +56,7 @@ pub fn check_hard_filters(fv: &FeatureVector, config: &AlphaConfig) -> HardFilte
     }
 
     // 6. Creator hold + dev hold combo (extra check)
-    if fv.creator_status == "creator_hold"
-        && fv.dev_team_hold_rate > 0.10
-    {
+    if fv.creator_status == "creator_hold" && fv.dev_team_hold_rate > 0.10 {
         failures.push(FilterFailure {
             name: "creator_hold_with_large_allocation".to_string(),
             value: fv.dev_team_hold_rate,

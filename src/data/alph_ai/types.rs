@@ -14,15 +14,18 @@ pub fn parse_alph_token_detail(v: &Value) -> Result<TokenDetail> {
         symbol: data["symbol"].as_str().unwrap_or("").to_string(),
         name: data["tokenName"].as_str().unwrap_or("").to_string(),
         decimals: data["decimals"].as_u64().unwrap_or(0) as u8,
-        price_usd: data["tokenPriceUsdt"].as_f64()
+        price_usd: data["tokenPriceUsdt"]
+            .as_f64()
             .or_else(|| data["price"].as_f64())
             .unwrap_or(0.0),
         market_cap: data["marketCap"].as_f64().unwrap_or(0.0),
-        liquidity_usd: data["liquidityUsdt"].as_f64()
+        liquidity_usd: data["liquidityUsdt"]
+            .as_f64()
             .or_else(|| data["liquidity"].as_f64())
             .unwrap_or(0.0),
         circulating_supply: data["circulatingSupply"].as_f64().unwrap_or(0.0),
-        holder_count: data["holderCount"].as_u64()
+        holder_count: data["holderCount"]
+            .as_u64()
             .or_else(|| data["holders"].as_u64())
             .unwrap_or(0),
         created_at: chrono::Utc::now(),
@@ -64,13 +67,14 @@ fn parse_alph_security(v: &Value) -> TokenSecurity {
 }
 
 fn parse_alph_social(v: &Value) -> Option<SocialLinks> {
-    let twitter = v["twitter"].as_str()
-        .or_else(|| v["xUsername"].as_str());
-    let website = v["website"].as_str()
+    let twitter = v["twitter"].as_str().or_else(|| v["xUsername"].as_str());
+    let website = v["website"]
+        .as_str()
         .or_else(|| v["officialWebsite"].as_str());
     let telegram = v["telegram"].as_str();
     let discord = v["discord"].as_str();
-    let description = v["description"].as_str()
+    let description = v["description"]
+        .as_str()
         .or_else(|| v["aiDescription"].as_str());
 
     if twitter.is_none() && website.is_none() && telegram.is_none() && discord.is_none() {
@@ -101,7 +105,8 @@ fn parse_alph_price_stats(v: &Value) -> PriceStats {
         hot_level: None,
         change_1m: v["change1m"].as_f64(),
         change_5m: v["change5m"].as_f64(),
-        change_1h: v["change1h"].as_f64()
+        change_1h: v["change1h"]
+            .as_f64()
             .or_else(|| v["priceChangePercent1h"].as_f64()),
     }
 }
@@ -110,36 +115,43 @@ fn parse_alph_price_stats(v: &Value) -> PriceStats {
 
 /// Parse a tweet from Alph AI's /x/search or /x/tweets response.
 pub fn parse_alph_tweet(v: &Value) -> Result<Tweet> {
-    let created_at = v["created_at"].as_str()
+    let created_at = v["created_at"]
+        .as_str()
         .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
         .map(|dt| dt.with_timezone(&chrono::Utc))
         .unwrap_or_else(chrono::Utc::now);
 
     Ok(Tweet {
         id: v["id"].as_str().unwrap_or("").to_string(),
-        username: v["username"].as_str()
+        username: v["username"]
+            .as_str()
             .or_else(|| v["screen_name"].as_str())
             .unwrap_or("")
             .to_string(),
-        display_name: v["display_name"].as_str()
+        display_name: v["display_name"]
+            .as_str()
             .or_else(|| v["name"].as_str())
             .unwrap_or("")
             .to_string(),
-        text: v["text"].as_str()
+        text: v["text"]
+            .as_str()
             .or_else(|| v["full_text"].as_str())
             .unwrap_or("")
             .to_string(),
         tweet_type: parse_tweet_type(v),
         created_at,
-        likes: v.get("public_metrics")
+        likes: v
+            .get("public_metrics")
             .and_then(|p| p["like_count"].as_u64())
             .or_else(|| v["like_count"].as_u64())
             .unwrap_or(0),
-        retweets: v.get("public_metrics")
+        retweets: v
+            .get("public_metrics")
             .and_then(|p| p["retweet_count"].as_u64())
             .or_else(|| v["retweet_count"].as_u64())
             .unwrap_or(0),
-        replies: v.get("public_metrics")
+        replies: v
+            .get("public_metrics")
             .and_then(|p| p["reply_count"].as_u64())
             .or_else(|| v["reply_count"].as_u64())
             .unwrap_or(0),
@@ -164,21 +176,25 @@ pub fn parse_alph_signal(v: &Value) -> Result<TokenSignal> {
     let token_info = v.get("tokenInfo").unwrap_or(v);
 
     Ok(TokenSignal {
-        token_address: token_info["tokenAddress"].as_str()
+        token_address: token_info["tokenAddress"]
+            .as_str()
             .or_else(|| v["tokenAddress"].as_str())
             .unwrap_or("")
             .to_string(),
-        token_symbol: token_info["symbol"].as_str()
+        token_symbol: token_info["symbol"]
+            .as_str()
             .or_else(|| v["symbol"].as_str())
             .unwrap_or("")
             .to_string(),
         signal_type: parse_alph_signal_type(v),
         confidence: parse_alph_confidence(v),
-        trigger_at: v["triggerAt"].as_i64()
+        trigger_at: v["triggerAt"]
+            .as_i64()
             .or_else(|| v["createTime"].as_i64())
             .unwrap_or(0),
         amount_usd: None,
-        description: v["reason"].as_str()
+        description: v["reason"]
+            .as_str()
             .or_else(|| v["description"].as_str())
             .map(String::from),
     })

@@ -1,9 +1,9 @@
 use ratatui::{
+    buffer::Buffer,
     layout::Rect,
     style::{Color, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Paragraph, Widget},
-    buffer::Buffer,
 };
 
 /// A right-click context menu.
@@ -22,14 +22,22 @@ impl Widget for ContextMenu<'_> {
 }
 
 /// Render a context menu inline (for when we need to show it outside a Widget context).
-pub fn render_context_menu(items: &[&str], cursor: usize, _x: u16, _y: u16, _area: Rect) -> impl Widget {
+pub fn render_context_menu(
+    items: &[&str],
+    cursor: usize,
+    _x: u16,
+    _y: u16,
+    _area: Rect,
+) -> impl Widget {
     // Returns a block with items, cursor highlighted
     let mut lines = Vec::new();
     for (i, item) in items.iter().enumerate() {
         if i == cursor {
             lines.push(Line::from(Span::styled(
                 format!(" ▶ {}", item),
-                Style::default().fg(Color::Rgb(88, 166, 255)).bg(Color::Rgb(48, 54, 61)),
+                Style::default()
+                    .fg(Color::Rgb(88, 166, 255))
+                    .bg(Color::Rgb(48, 54, 61)),
             )));
         } else {
             lines.push(Line::from(Span::styled(

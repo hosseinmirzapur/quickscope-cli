@@ -1,9 +1,9 @@
 use ratatui::{
+    buffer::Buffer,
     layout::Rect,
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Paragraph, Widget},
-    buffer::Buffer,
 };
 
 /// A scrollable table with headers, alternating row colors, and cursor.
@@ -33,7 +33,9 @@ impl Widget for Table<'_> {
                 let w = self.column_widths.get(i).copied().unwrap_or(10) as usize;
                 spans.push(Span::styled(
                     format!("{:^width$}", h, width = w),
-                    Style::default().fg(self.header_color).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(self.header_color)
+                        .add_modifier(Modifier::BOLD),
                 ));
             }
             let line = Line::from(spans);

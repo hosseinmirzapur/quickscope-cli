@@ -1,8 +1,8 @@
 use ratatui::{
+    buffer::Buffer,
     layout::Rect,
     style::{Color, Style},
     widgets::{Paragraph, Widget},
-    buffer::Buffer,
 };
 
 /// A horizontal progress bar with label.
@@ -30,14 +30,22 @@ impl Widget for ProgressBar<'_> {
                 let fill_len = (w as usize).saturating_sub(label.len() + 5);
                 let fill = "█".repeat(filled as usize);
                 let empty = "░".repeat(fill_len.saturating_sub(filled as usize));
-                let display = format!("{}{} {} {:.0}%", &fill[..fill.len().min(fill_len)], empty, label, self.ratio * 100.0);
+                let display = format!(
+                    "{}{} {} {:.0}%",
+                    &fill[..fill.len().min(fill_len)],
+                    empty,
+                    label,
+                    self.ratio * 100.0
+                );
                 Paragraph::new(display).style(style).render(area, buf);
                 return;
             }
         }
         let fill = "█".repeat(filled as usize);
         let empty = "░".repeat((w - filled) as usize);
-        Paragraph::new(format!("{}{}", fill, empty)).style(style).render(area, buf);
+        Paragraph::new(format!("{}{}", fill, empty))
+            .style(style)
+            .render(area, buf);
     }
 }
 

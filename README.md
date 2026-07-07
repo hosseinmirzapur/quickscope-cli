@@ -6,7 +6,7 @@
 
 [![Rust](https://img.shields.io/badge/Rust-2021-edition?logo=rust&style=flat-square)]()
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)]()
-[![Tests](https://img.shields.io/badge/tests-103%20passing-success?style=flat-square)]()
+[![Tests](https://img.shields.io/badge/tests-105%20passing-success?style=flat-square)]()
 [![Status](https://img.shields.io/badge/status-alpha-yellow?style=flat-square)]()
 
 <img src="https://img.shields.io/badge/TUI-ratatui%20%7C%20crossterm-ff6b6b?style=flat-square" />
@@ -48,6 +48,7 @@
 
 ### 🔭 Alpha Discovery
 - Real-time trending from **GMGN** + **Alph AI** + **DEX Screener**
+- **Scanner mode selector**: Trending / Trenches / Watchlist / AI-Rec
 - 30+ dimension **feature vector** per token
 - **6 category sub-scores**: Momentum, Safety, Holder Quality, Liquidity, Dev Trust, Social
 - Composite **Alpha Score** (0–100) with weighted formula
@@ -75,23 +76,27 @@
 - Nudges weights ±5% per run (guard-railed: 0.05–0.40 per weight)
 - Min 10 wins + 10 losses before first tune
 - **LLM post-mortem** (pluggable: OpenAI, Anthropic, Ollama)
-- Full tuning history logged to SQLite
+- Full tuning history + discrimination analysis logged to SQLite
+- Strategy tab displays auto-tune history, feature discrimination bars, post-mortem results
 
 </td>
 <td width="50%">
 
 ### 🎨 Terminal UI
-- **7 tabs** with persistent **sidebar** (VS Code-style activity bar)
-- **2 themes**: Dark (OpenCode-inspired) & Degen Mode (neon)
-- **Command palette** (`Ctrl+P`) for quick navigation and actions
+- **7 tabs** with persistent **sidebar** (VS Code-style activity bar) + mouse click support
+- **Scanner mode selector**: switch between Trending │ Trenches │ Watchlist │ AI-Rec
+- **4 themes**: Dark (OpenCode), Terminal (Bloomberg), Degen (Neon), Cyberpunk (Pink/Cyan)
+- **Command palette** (`Ctrl+P`) — searchable, keyboard-navigable, dimmed backdrop
+- **Sweet-alert modals** — centered, dark panel, colored border, dimmed backdrop
 - **Mouse support**: sidebar clicks, list selection, scroll wheel
-- **Clear-backed modals** (SweetAlert-style overlay with backdrop)
+- **Scroll-safe**: clamped offsets, no ghosting, proper overlay clearing
 - **Toast notifications** with auto-dismiss (4s)
 - **Marketcap/volume-first display** — abbreviated with color coding
 - **Collapsible sidebar** (`Ctrl+B`) for more content space
 - **Auto-refresh every 10s** for real-time feel
-- Arrow-key navigation with PageUp/PageDown
+- Arrow-key navigation with PageUp/PageDown/Home/End
 - Full keyboard shortcut system (`?` for help)
+- **No VIM-style bindings** — pure arrow key navigation
 
 </td>
 </tr>
@@ -104,7 +109,7 @@
 ### Prerequisites
 
 - **Rust** 1.75+ (edition 2021)
-- A **GMGN API key** (free tier available)
+- A **GMGN API key** (free tier available) — run `npm install -g gmgn-cli` then `gmgn-cli config --apply <KEY>`
 - A **dex_cookie** from [alph.ai](https://alph.ai) (optional, for enhanced data)
 
 ### Installation
@@ -126,7 +131,7 @@ cargo run --release
 ### Configuration
 
 ```env
-# Required
+# Required — get from https://gmgn.ai
 GMGN_API_KEY=gmgn_solbscbaseethmonadtron
 
 # Optional — enhances data with Twitter/X monitoring + WebSocket
@@ -142,6 +147,8 @@ QUICKSCOPE_DB_PATH=~/.config/quickscope/data.db
 QUICKSCOPE_LOG_LEVEL=info
 ```
 
+**Missing API keys trigger a fatal error modal on startup** with a clear message pointing to the `.env` file.
+
 ---
 
 ## 🎮 Usage
@@ -151,12 +158,16 @@ QUICKSCOPE_LOG_LEVEL=info
 | Key | Action | Key | Action |
 |---|---|---|---|
 | `↑` / `↓` | Navigate lists | `Enter` | Select / View detail |
-| `PageUp` / `PageDown` | Scroll faster | `Esc` | Close modal / Back |
-| `Tab` / `Shift+Tab` | Next/Previous tab | `Ctrl+P` | Command palette |
-| `?` | Toggle help modal | `Ctrl+B` | Toggle sidebar |
-| `r` | Refresh data | `q` / `Ctrl+C` | Quit |
-| `b` | Paper buy | `s` | Paper sell |
-| `Space` | Toggle watchlist | `Ctrl+E` | Emergency exit all |
+| `←` / `→` | Switch tabs (or Scanner mode when in Scanner tab) | `Esc` | Close modal / Back |
+| `PageUp` / `PageDown` | Scroll faster | `Ctrl+P` | Command palette |
+| `Home` / `End` | Jump to start/end of list | `Ctrl+B` | Toggle sidebar |
+| `Tab` / `Shift+Tab` | Next/Previous tab | `r` | Refresh data (context-sensitive) |
+| `?` | Toggle help modal | `f` | Filter modal |
+| `/` | Search tokens | `Space` | Toggle watchlist |
+| `b` | Paper buy (Trade tab) | `s` | Paper sell (Trade tab) |
+| `q` / `Ctrl+C` | Quit | `Ctrl+E` | Emergency exit all |
+
+**No VIM-style bindings (`j`/`k`/`h`/`l`)** — all navigation uses arrow keys.
 
 ### Tab Overview
 
@@ -165,52 +176,69 @@ Tabs are accessible via the **persistent sidebar** (left edge) or keyboard short
 | Tab | Sidebar Icon | Purpose |
 |---|---|---|
 | **Dashboard** | ⬡ | Portfolio snapshot + live trending list |
-| **Scanner** | ⌕ | Browse trending tokens, filter, select for analysis |
+| **Scanner** | ⌕ | Browse tokens with 4-view mode selector (Trending/Trenches/Watchlist/AI-Rec) |
 | **Analyzer** | ◎ | Deep-dive: kline, security, holders, smart money, Alpha Score |
 | **Trade** | ⟠ | Open/close paper positions, TP/SL, quick actions |
-| **Journal** | ☰ | Trade history, session stats, win rate |
-| **Strategy** | ⚙ | Auto-tune weights, LLM post-mortem |
-| **Settings** | ◆ | API keys, risk profile, display preferences |
+| **Journal** | ☰ | Trade history, session stats, win rate, best/worst trade |
+| **Strategy** | ⚙ | Auto-tune weights, discrimination analysis, LLM post-mortem |
+| **Settings** | ◆ | API key status (live env check), risk profile, theme cycling |
+
+### Scanner Mode Selector
+
+When in the Scanner tab, use `←`/`→` to cycle between four data sources:
+
+| Mode | Data Source | Description |
+|---|---|---|
+| **Trending** | GMGN `market trending` | Tokens ranked by volume/activity (default) |
+| **Trenches** | GMGN `market trenches` | Newly launched tokens from pump.fun, etc. |
+| **Watchlist** | Filtered trending | Only watchlisted tokens (add with `Space`) |
+| **AI-Rec** | Alph AI signals | Tokens with Gold/Silver confidence signals |
+
+Press `r` to refresh the current mode's data (fetches trenches when in Trenches mode).
+
+###  by Address
+
+Open the command palette (`Ctrl+P`) and select " by Address". Paste any Solana contract address and press `Enter` to look up full token details. The Analyzer tab opens automatically with the result.
 
 ---
 
 ## 🏗️ Architecture
 
-	```
-	                    ┌──────────────────────────────────────────────────────────────┐
-	                    │                    QuickScope TUI (ratatui)                   │
-	                    │  ┌──┬──────────────────────────────────────────────────┐    │
-	                    │  │⬡│  Dashboard                                        │    │
-	                    │  │⌕│  Scanner                                          │    │
-	                    │  │◎│  Analyzer                                         │    │
-	                    │  │⟠│  Trade Terminal    ← sidebar | content layout     │    │
-	                    │  │☰│  Journal                                           │    │
-	                    │  │⚙│  Strategy                                          │    │
-	                    │  │◆│  Settings                                          │    │
-	                    │  └──┴──────────────────────────────────────────────────┘    │
-	                    └───────────────────────┬──────────────────────────────────────┘
-	                                            │
-	                            ┌───────────────┴───────────────┐
-	                            │         AppState + update()    │
-	                            │       (Elm/TEA event loop)     │
-	                            └───────────────┬───────────────┘
-	                                            │
-	              ┌─────────────────────────────┼─────────────────────────────┐
-	              │                             │                             │
-	              ▼                             ▼                             ▼
-	    ┌─────────────────┐          ┌───────────────────┐         ┌──────────────────┐
-	    │  DataOrchestrator│          │   Alpha Filter     │         │  Trade Engine    │
-	    │  (GMGN + Alph AI│◄────────►│   (Feature Vector  │◄───────►│  (Simulator +    │
-	    │   + DEX Screen) │          │   → Scoring → Mode)│         │   Risk Manager)  │
-	    └─────────────────┘          └───────────────────┘         └────────┬─────────┘
-	              │                                                         │
-	              ▼                                                         ▼
-	    ┌─────────────────────┐                                 ┌──────────────────────┐
-	    │  Learning Engine     │                                 │  SQLite Storage      │
-	    │  (Auto-Tuner + LLM)  │◄───────────────────────────────│  (positions, journal, │
-	    └─────────────────────┘                                 │   config, cache)      │
-	                                                             └──────────────────────┘
-	```
+```
+                    ┌──────────────────────────────────────────────────────────────┐
+                    │                    QuickScope TUI (ratatui)                   │
+                    │  ┌──┬──────────────────────────────────────────────────┐    │
+                    │  │⬡│  Dashboard                                        │    │
+                    │  │⌕│  Scanner (Trending │ Trenches │ Watchlist │ AI-Rec)│    │
+                    │  │◎│  Analyzer                                          │    │
+                    │  │⟠│  Trade Terminal    ← sidebar | content layout     │    │
+                    │  │☰│  Journal                                           │    │
+                    │  │⚙│  Strategy                                          │    │
+                    │  │◆│  Settings                                          │    │
+                    │  └──┴──────────────────────────────────────────────────┘    │
+                    └───────────────────────┬──────────────────────────────────────┘
+                                            │
+                            ┌───────────────┴───────────────┐
+                            │         AppState + update()    │
+                            │       (Elm/TEA event loop)     │
+                            └───────────────┬───────────────┘
+                                            │
+              ┌─────────────────────────────┼─────────────────────────────┐
+              │                             │                             │
+              ▼                             ▼                             ▼
+    ┌─────────────────┐          ┌───────────────────┐         ┌──────────────────┐
+    │  DataOrchestrator│          │   Alpha Filter     │         │  Trade Engine    │
+    │  (GMGN + Alph AI│◄────────►│   (Feature Vector  │◄───────►│  (Simulator +    │
+    │   + DEX Screen) │          │   → Scoring → Mode)│         │   Risk Manager)  │
+    └─────────────────┘          └───────────────────┘         └────────┬─────────┘
+              │                                                         │
+              ▼                                                         ▼
+    ┌─────────────────────┐                                 ┌──────────────────────┐
+    │  Learning Engine     │                                 │  SQLite Storage      │
+    │  (Auto-Tuner + LLM)  │◄───────────────────────────────│  (positions, journal, │
+    └─────────────────────┘                                 │   config, cache)      │
+                                                             └──────────────────────┘
+```
 
 ### Threading Model
 
@@ -233,19 +261,20 @@ QuickScope combines three data sources for maximum signal:
 
 | Source | Role | Auth | Rate Limits | Key Strength |
 |---|---|---|---|---|
-| **[GMGN](https://gmgn.ai)** | **Primary** | `X-APIKEY` header | 20 req/s, weights 1–5 | Best Solana memecoin data: trending, kline, security, holders, smart money |
-| **[Alph AI](https://alph.ai)** | **Secondary** | `Cookie: dex_cookie` | Unlisted (be reasonable) | **Twitter/X monitoring**, WebSocket real-time, AI signal confidence (Gold/Silver/Copper) |
+| **[GMGN](https://gmgn.ai)** | **Primary** | Ed25519 keypair via `gmgn-cli` | 20 req/s, weights 1–5 | Best Solana memecoin data: trending, kline, security, holders, smart money, trenches |
+| **[Alph AI](https://alph.ai)** | **Secondary** | `Cookie: dex_cookie` | Unlisted (be reasonable) | **Twitter/X monitoring**, WebSocket real-time with auto-reconnect, AI signal confidence (Gold/Silver/Copper) |
 | **[DEX Screener](https://dexscreener.com)** | **Tertiary** | None | Unlisted | Cross-reference trending/boosts |
 
 ### Why Three Sources?
 
-GMGN provides the best fundamental data but has **zero Twitter/X visibility** — a critical gap for narrative-driven memecoin trading. Alph AI fills this completely with KOL tweet tracking, CA extraction from tweets, sentiment analysis, and real-time WebSocket feeds. DEX Screener adds boost/trending cross-reference for conviction multiplier.
+GMGN provides the best fundamental data but has **zero Twitter/X visibility** — a critical gap for narrative-driven memecoin trading. Alph AI fills this completely with KOL tweet tracking, CA extraction from tweets, sentiment analysis, and real-time WebSocket feeds (with exponential backoff reconnection). DEX Screener adds boost/trending cross-reference for conviction multiplier.
 
 ### Cache Strategy
 
 | Data Type | TTL | Source |
 |---|---|---|
 | Trending list | 30s | GMGN |
+| Trenches (new tokens) | 30s | GMGN |
 | Kline (price candles) | 10s | GMGN |
 | Token detail | 60s | GMGN + Alph AI |
 | Smart money trades | 15s | GMGN |
@@ -383,6 +412,15 @@ Danger:      #f85149 (Red)
 Muted:       #8b9498 (Gray)
 ```
 
+### Terminal (Bloomberg-style)
+```
+Background:  #080808 (Deep Black)
+Accent:      #ffbe00 (Amber/Gold)
+Success:     #00c850 (Green)
+Danger:      #ff3c3c (Red)
+Muted:       #64645a (Olive Gray)
+```
+
 ### Degen Mode
 ```
 Background:  #0a0514 (Deep Purple)
@@ -392,7 +430,16 @@ Danger:      #ff3264 (Hot Pink)
 Muted:       #7864a0 (Lavender)
 ```
 
-Switch with: `Settings Tab → Theme Degen`
+### Cyberpunk
+```
+Background:  #0f0019 (Deep Purple)
+Accent:      #00ffff (Cyan)
+Success:     #00ff80 (Green)
+Danger:      #ff0080 (Pink)
+Muted:       #7850b4 (Lavender)
+```
+
+Cycle themes via: `Ctrl+P` → **Cycle Theme** or type `Cycle` in the command palette.
 
 ---
 
@@ -415,6 +462,8 @@ QuickScope reads configuration from:
 | `QUICKSCOPE_DB_PATH` | ❌ | `~/.config/quickscope/data.db` | SQLite database path |
 | `QUICKSCOPE_LOG_LEVEL` | ❌ | `info` | Tracing log level |
 
+The Settings tab shows **live status** of every API key — green if configured, red if missing.
+
 ---
 
 ## 📁 Project Structure
@@ -435,35 +484,38 @@ quickscope/
 │   │   ├── gmgn-endpoints.md
 │   │   ├── alph-ai-endpoints.md
 │   │   └── dex-screener.md
-│   ├── plans/              # Implementation plan
+│   ├── plans/              # Implementation plans
 │   └── superpowers/specs/  # Design specification
 └── src/
     ├── main.rs             # Entry point (TUI event loop)
     ├── lib.rs              # Module declarations
     ├── app/                # Elm/TEA architecture
     │   ├── mod.rs          # update() function
-    │   ├── state.rs        # AppState
+    │   ├── state.rs        # AppState + TokenListMode
     │   └── input.rs        # Key/mouse dispatch
-	├── ui/                 # Terminal UI
-	│   ├── mod.rs
-	│   ├── theme.rs        # Dark + Degen themes (18 semantic tokens)
-	│   ├── layout.rs       # Root layout (sidebar | content) + overlays
-	│   ├── sidebar.rs      # Persistent tab sidebar (VS Code-style)
-	│   ├── format.rs       # Marketcap/volume abbreviation + color coding
-	│   └── widgets/        # 7 tab implementations
-	│       ├── command_palette.rs  # Ctrl+P overlay with search/filter
-	│       ├── dashboard.rs
-	│       ├── scanner.rs
-	│       ├── analyzer.rs
-	│       ├── trade_terminal.rs
-	│       ├── journal.rs
-	│       ├── strategy.rs
-	│       └── settings.rs
+    ├── ui/                 # Terminal UI
+    │   ├── mod.rs
+    │   ├── theme.rs        # 4 themes (Dark, Terminal, Degen, Cyberpunk)
+    │   ├── layout.rs       # Root layout + overlays
+    │   ├── sidebar.rs      # Persistent tab sidebar
+    │   ├── format.rs       # Marketcap/volume abbreviation + color coding
+    │   └── widgets/        # 7 tabs + 8 shared widgets
+    │       ├── command_palette.rs  # Ctrl+P overlay with search/filter
+    │       ├── modal.rs           # Sweet-alert style with dimmed backdrop
+    │       ├── toast.rs           # Auto-dismiss notifications
+    │       ├── dashboard.rs
+    │       ├── scanner.rs         # Mode selector (Trending/Trenches/Watchlist/AI-Rec)
+    │       ├── analyzer.rs
+    │       ├── trade_terminal.rs
+    │       ├── journal.rs
+    │       ├── strategy.rs        # Auto-tune history + discrimination + post-mortem
+    │       ├── settings.rs        # Live API key status
+    │       └── ... (sparkline, progress_bar, tag, table, search_bar, chart, context_menu)
     ├── data/               # Data sources
-    │   ├── models.rs       # All domain types
+    │   ├── models.rs       # All domain types + event/command enums
     │   ├── orchestrator.rs # 3-source merge facade
     │   ├── gmgn/           # GMGN client + rate limiter + parsers
-    │   ├── alph_ai/        # Alph AI REST + WebSocket client
+    │   ├── alph_ai/        # Alph AI REST + WebSocket (auto-reconnect)
     │   └── dex_screener/   # DEX Screener client
     ├── alpha/              # Alpha Filter Engine
     │   ├── mod.rs          # Pipeline orchestrator
@@ -472,7 +524,7 @@ quickscope/
     │   ├── hard_filters.rs # Instant reject checks
     │   ├── rug_detect.rs   # Rug pull analysis
     │   ├── modes.rs        # Trade mode selection
-    │   └── narrative.rs    # Narrative detection (Dog, AI, etc.)
+    │   └── narrative.rs    # Narrative detection
     ├── trade/              # Paper Trade Engine
     │   ├── mod.rs          # Trade orchestrator
     │   ├── simulator.rs    # Buy/sell simulation
@@ -484,14 +536,14 @@ quickscope/
     │   ├── tuner.rs        # Weight auto-tuning
     │   ├── journal.rs      # Post-mortem flow
     │   └── llm/            # AI providers
-    │       ├── mod.rs      # Enum-based provider (OpenAI/Anthropic/Ollama)
+    │       ├── mod.rs      # Enum-based provider
     │       └── prompts.rs  # Prompt templates
     └── storage/            # SQLite persistence
         ├── mod.rs
         ├── db.rs           # Connection pool + init
         ├── migrations.rs   # Schema SQL
         ├── positions.rs    # Position CRUD
-        ├── journal.rs      # Daily risk, watchlist, portfolio
+        ├── journal.rs      # Daily risk, watchlist, portfolio, tuning, post-mortems
         ├── config.rs       # Alpha config + settings
         └── cache.rs        # API response cache
 ```
@@ -510,7 +562,7 @@ cargo test --lib storage::positions
 # Run with output
 cargo test --lib -- --nocapture
 
-# Full test suite (103+ tests)
+# Full test suite (105+ tests)
 ```
 
 ### Test Coverage
@@ -518,24 +570,23 @@ cargo test --lib -- --nocapture
 | Module | Tests | Status |
 |---|---|---|
 | Domain models (`data::models`) | 14 | ✅ |
-| GMGN client + parsers | 13 | ✅ |
-| Alph AI client + types | 8 | ✅ |
+| GMGN client + parsers | 14 | ✅ |
+| Alph AI client + types | 10 | ✅ |
 | DEX Screener | 1 | ✅ |
 | DataOrchestrator | 1 | ✅ |
 | Alpha Filter (scoring, filters, rug, modes, narrative) | 33 | ✅ |
 | Trade Engine (simulator, risk) | 15 | ✅ |
-| Learning Engine (analyzer, tuner, LLM) | 8 | ✅ |
-| Storage (DB, positions, journal, config, cache) | 15 | ✅ |
+| Learning Engine (analyzer, tuner, LLM) | 11 | ✅ |
+| Storage (DB, positions, journal, config, cache) | 18 | ✅ |
 | App (state, tab switching) | 3 | ✅ |
-| **Total** | **104** | ✅ |
+| **Total** | **105** | ✅ |
 
 ---
 
 ## 🛣️ Roadmap
 
 ### v0.2 — Near Term
-- [ ] Full WebSocket integration (live kline → TP/SL auto-trigger)
-- [ ] Real GMGN/Alph AI API integration tests
+- [ ] Real GMGN/Alph AI API integration tests (requires keys in CI)
 - [ ] Tab polish: Scanner (filters), Analyzer (kline chart), Trade Terminal (order books)
 - [ ] Notification system (toast → sound on signal)
 - [ ] Settings persistence + theme switching in Settings tab

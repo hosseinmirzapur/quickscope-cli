@@ -28,7 +28,7 @@ pub async fn insert_position(
         "INSERT INTO positions (id, token_address, token_symbol, side, entry_price, \
          amount_sol, amount_tokens, slippage, mode, tp_percent, sl_percent, status, \
          opened_at, feature_vector, alpha_score, rug_report) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?)"
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?)",
     )
     .bind(&id)
     .bind(token_address)
@@ -79,7 +79,7 @@ pub struct PositionRow {
 /// Get all currently open positions, newest first.
 pub async fn get_open_positions(pool: &SqlitePool) -> Result<Vec<PositionRow>> {
     let rows = sqlx::query_as::<_, PositionRow>(
-        "SELECT * FROM positions WHERE status = 'open' ORDER BY opened_at DESC"
+        "SELECT * FROM positions WHERE status = 'open' ORDER BY opened_at DESC",
     )
     .fetch_all(pool)
     .await?;
@@ -114,18 +114,16 @@ pub async fn get_closed_positions(
 
 /// Count open positions.
 pub async fn count_open_positions(pool: &SqlitePool) -> Result<i64> {
-    let (count,): (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM positions WHERE status = 'open'"
-    )
-    .fetch_one(pool)
-    .await?;
+    let (count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM positions WHERE status = 'open'")
+        .fetch_one(pool)
+        .await?;
     Ok(count)
 }
 
 /// Count open positions for a specific token.
 pub async fn count_open_for_token(pool: &SqlitePool, token_address: &str) -> Result<i64> {
     let (count,): (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM positions WHERE status = 'open' AND token_address = ?"
+        "SELECT COUNT(*) FROM positions WHERE status = 'open' AND token_address = ?",
     )
     .bind(token_address)
     .fetch_one(pool)
@@ -144,7 +142,7 @@ pub async fn close_position(
     let closed_at = Utc::now().to_rfc3339();
     sqlx::query(
         "UPDATE positions SET status = 'closed', closed_at = ?, exit_price = ?, \
-         pnl_sol = ?, pnl_percent = ? WHERE id = ?"
+         pnl_sol = ?, pnl_percent = ? WHERE id = ?",
     )
     .bind(&closed_at)
     .bind(exit_price)
@@ -158,12 +156,10 @@ pub async fn close_position(
 
 /// Get a single position by ID.
 pub async fn get_position_by_id(pool: &SqlitePool, id: &str) -> Result<Option<PositionRow>> {
-    let row = sqlx::query_as::<_, PositionRow>(
-        "SELECT * FROM positions WHERE id = ?"
-    )
-    .bind(id)
-    .fetch_optional(pool)
-    .await?;
+    let row = sqlx::query_as::<_, PositionRow>("SELECT * FROM positions WHERE id = ?")
+        .bind(id)
+        .fetch_optional(pool)
+        .await?;
     Ok(row)
 }
 
@@ -183,10 +179,23 @@ mod tests {
     async fn test_insert_and_get_open() {
         let (db, _dir) = setup_db().await;
         let id = insert_position(
-            &db.pool, "So11abc", "PEPE", "buy", 0.000018, 0.5,
-            27777.0, 0.03, "EXPLODE", Some(100.0), Some(60.0),
-            "{}", 87.0, "{}",
-        ).await.unwrap();
+            &db.pool,
+            "So11abc",
+            "PEPE",
+            "buy",
+            0.000018,
+            0.5,
+            27777.0,
+            0.03,
+            "EXPLODE",
+            Some(100.0),
+            Some(60.0),
+            "{}",
+            87.0,
+            "{}",
+        )
+        .await
+        .unwrap();
         assert!(!id.is_empty());
 
         let open = get_open_positions(&db.pool).await.unwrap();
@@ -198,12 +207,27 @@ mod tests {
     async fn test_close_position() {
         let (db, _dir) = setup_db().await;
         let id = insert_position(
-            &db.pool, "So11xyz", "WIF", "buy", 0.5, 1.0,
-            2.0, 0.02, "ALPHA", Some(80.0), Some(40.0),
-            "{}", 72.0, "{}",
-        ).await.unwrap();
+            &db.pool,
+            "So11xyz",
+            "WIF",
+            "buy",
+            0.5,
+            1.0,
+            2.0,
+            0.02,
+            "ALPHA",
+            Some(80.0),
+            Some(40.0),
+            "{}",
+            72.0,
+            "{}",
+        )
+        .await
+        .unwrap();
 
-        close_position(&db.pool, &id, 0.75, 0.5, 50.0).await.unwrap();
+        close_position(&db.pool, &id, 0.75, 0.5, 50.0)
+            .await
+            .unwrap();
 
         let open = get_open_positions(&db.pool).await.unwrap();
         assert_eq!(open.len(), 0);
@@ -219,13 +243,16 @@ mod tests {
         assert_eq!(count_open_positions(&db.pool).await.unwrap(), 0);
 
         insert_position(
-            &db.pool, "A", "A", "buy", 1.0, 1.0, 1.0, 0.01, "SCALP",
-            None, None, "{}", 50.0, "{}",
-        ).await.unwrap();
+            &db.pool, "A", "A", "buy", 1.0, 1.0, 1.0, 0.01, "SCALP", None, None, "{}", 50.0, "{}",
+        )
+        .await
+        .unwrap();
         insert_position(
-            &db.pool, "B", "B", "buy", 1.0, 1.0, 1.0, 0.01, "FALLBACK",
-            None, None, "{}", 40.0, "{}",
-        ).await.unwrap();
+            &db.pool, "B", "B", "buy", 1.0, 1.0, 1.0, 0.01, "FALLBACK", None, None, "{}", 40.0,
+            "{}",
+        )
+        .await
+        .unwrap();
 
         assert_eq!(count_open_positions(&db.pool).await.unwrap(), 2);
         assert_eq!(count_open_for_token(&db.pool, "A").await.unwrap(), 1);
@@ -235,10 +262,23 @@ mod tests {
     async fn test_get_position_by_id() {
         let (db, _dir) = setup_db().await;
         let id = insert_position(
-            &db.pool, "So11abc", "BONK", "buy", 0.000001, 0.1,
-            100000.0, 0.01, "EXPLODE", Some(200.0), Some(50.0),
-            "{\"hot_level\":5}", 92.0, "{}",
-        ).await.unwrap();
+            &db.pool,
+            "So11abc",
+            "BONK",
+            "buy",
+            0.000001,
+            0.1,
+            100000.0,
+            0.01,
+            "EXPLODE",
+            Some(200.0),
+            Some(50.0),
+            "{\"hot_level\":5}",
+            92.0,
+            "{}",
+        )
+        .await
+        .unwrap();
 
         let pos = get_position_by_id(&db.pool, &id).await.unwrap().unwrap();
         assert_eq!(pos.alpha_score, 92.0);

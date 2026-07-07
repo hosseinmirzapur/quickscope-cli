@@ -1,8 +1,8 @@
 use ratatui::{
+    buffer::Buffer,
     layout::Rect,
     style::{Color, Style},
     widgets::{Paragraph, Widget},
-    buffer::Buffer,
 };
 
 /// A colored tag/chip, e.g. `[ Pump.fun ]`.

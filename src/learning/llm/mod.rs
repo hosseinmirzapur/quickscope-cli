@@ -8,20 +8,38 @@ pub mod prompts;
 /// Supported LLM providers for post-mortem analysis.
 #[derive(Debug, Clone)]
 pub enum LlmProvider {
-    OpenAi { api_key: String, model: String },
-    Anthropic { api_key: String, model: String },
-    Ollama { base_url: String, model: String },
+    OpenAi {
+        api_key: String,
+        model: String,
+    },
+    Anthropic {
+        api_key: String,
+        model: String,
+    },
+    Ollama {
+        base_url: String,
+        model: String,
+    },
     /// Dummy provider for testing — always returns the stored response.
-    Stub { model: String, response: String },
+    Stub {
+        model: String,
+        response: String,
+    },
 }
 
 impl LlmProvider {
     /// Send a chat completion request with system + user prompts.
     pub async fn chat(&self, system_prompt: &str, user_prompt: &str) -> Result<String> {
         match self {
-            Self::OpenAi { api_key, model } => openai_chat(api_key, model, system_prompt, user_prompt).await,
-            Self::Anthropic { api_key, model } => anthropic_chat(api_key, model, system_prompt, user_prompt).await,
-            Self::Ollama { base_url, model } => ollama_chat(base_url, model, system_prompt, user_prompt).await,
+            Self::OpenAi { api_key, model } => {
+                openai_chat(api_key, model, system_prompt, user_prompt).await
+            }
+            Self::Anthropic { api_key, model } => {
+                anthropic_chat(api_key, model, system_prompt, user_prompt).await
+            }
+            Self::Ollama { base_url, model } => {
+                ollama_chat(base_url, model, system_prompt, user_prompt).await
+            }
             Self::Stub { response, .. } => Ok(response.clone()),
         }
     }

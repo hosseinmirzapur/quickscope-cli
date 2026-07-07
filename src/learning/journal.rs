@@ -1,8 +1,8 @@
 use anyhow::Result;
 use sqlx::SqlitePool;
 
+use super::llm::prompts::{build_post_mortem_prompt, TradeSummary, POST_MORTEM_SYSTEM};
 use super::llm::LlmProvider;
-use super::llm::prompts::{POST_MORTEM_SYSTEM, build_post_mortem_prompt, TradeSummary};
 use crate::storage::{journal, positions};
 
 /// Run an LLM post-mortem analysis on closed trades for a given period.
@@ -13,27 +13,31 @@ pub async fn run_post_mortem(
     period_end: &str,
 ) -> Result<String> {
     // 1. Gather closed positions in the period
-    let closed = positions::get_closed_positions(
-        pool,
-        Some(period_start),
-        Some(period_end),
-    )
-    .await?;
+    let closed =
+        positions::get_closed_positions(pool, Some(period_start), Some(period_end)).await?;
 
     if closed.is_empty() {
         return Ok("No closed trades in the selected period.".to_string());
     }
 
     // 2. Build trade summaries
-    let wins = closed.iter().filter(|p| p.pnl_sol.unwrap_or(0.0) > 0.0).count();
-    let losses = closed.iter().filter(|p| p.pnl_sol.unwrap_or(0.0) <= 0.0).count();
+    let wins = closed
+        .iter()
+        .filter(|p| p.pnl_sol.unwrap_or(0.0) > 0.0)
+        .count();
+    let losses = closed
+        .iter()
+        .filter(|p| p.pnl_sol.unwrap_or(0.0) <= 0.0)
+        .count();
     let total_pnl: f64 = closed.iter().map(|p| p.pnl_sol.unwrap_or(0.0)).sum();
 
     let trade_summaries: Vec<TradeSummary> = closed
         .iter()
         .map(|p| {
             // Try to extract scores from feature_vector JSON
-            let (momentum, safety) = p.feature_vector.as_ref()
+            let (momentum, safety) = p
+                .feature_vector
+                .as_ref()
                 .and_then(|json| serde_json::from_str::<serde_json::Value>(json).ok())
                 .map(|fv| {
                     (
@@ -76,7 +80,10 @@ pub async fn run_post_mortem(
     // 5. Save to post_mortems table
     let summary = format!(
         "{} trades ({}W/{}L) {:.2} SOL",
-        closed.len(), wins, losses, total_pnl
+        closed.len(),
+        wins,
+        losses,
+        total_pnl
     );
     journal::log_post_mortem(
         pool,

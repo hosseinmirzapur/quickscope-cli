@@ -3,21 +3,27 @@ use crate::data::models::*;
 /// Normalize a value to [0, 1] using a sigmoid-like log scale.
 /// Useful for values that vary widely (e.g., liquidity, market cap).
 pub fn sigmoid_log(value: f64, midpoint: f64) -> f64 {
-    if value <= 0.0 { return 0.0; }
+    if value <= 0.0 {
+        return 0.0;
+    }
     let x = (value / midpoint).ln();
     1.0 / (1.0 + (-x).exp())
 }
 
 /// Linear clamp: maps x to [0, 1], clamped at min/max.
 pub fn normalize_linear(value: f64, min: f64, max: f64) -> f64 {
-    if max <= min { return 0.0; }
+    if max <= min {
+        return 0.0;
+    }
     ((value - min) / (max - min)).clamp(0.0, 1.0)
 }
 
 /// Clamp a value to a range and divide by max to normalize to [0,1].
 pub fn clamp_divide(value: f64, min: f64, max: f64) -> f64 {
     let clamped = value.clamp(min, max);
-    if max <= 0.0 { return 0.0; }
+    if max <= 0.0 {
+        return 0.0;
+    }
     (clamped / max).max(0.0)
 }
 
@@ -42,8 +48,7 @@ pub fn alpha_score(scores: &CategoryScores, config: &AlphaConfig) -> f64 {
         + config.w_liquidity * scores.liquidity
         + config.w_dev * scores.dev_trust
         + config.w_social * scores.social)
-    * 100_f64
-    .clamp(0.0, 100.0)
+        * 100_f64.clamp(0.0, 100.0)
 }
 
 // ── Individual Category Formulas ───────────────────────────────
@@ -90,11 +95,7 @@ pub fn dev_trust_score(fv: &FeatureVector) -> f64 {
         "creatorclose" | "creator_close" => 0.0,
         _ => 0.5,
     };
-    let ath = normalize_linear(
-        fv.creator_ath_mc.unwrap_or(0.0),
-        0.0,
-        1_000_000.0,
-    );
+    let ath = normalize_linear(fv.creator_ath_mc.unwrap_or(0.0), 0.0, 1_000_000.0);
     let cto = if fv.cto_flag { 0.8 } else { 0.3 };
     let boost = if fv.dexscr_boost { 0.7 } else { 0.3 };
     let prev = normalize_linear(fv.creator_prev_tokens as f64, 0.0, 10.0);
@@ -105,7 +106,11 @@ pub fn dev_trust_score(fv: &FeatureVector) -> f64 {
 pub fn social_score(fv: &FeatureVector) -> f64 {
     let mentions = normalize_linear(fv.twitter_mentions_1h.unwrap_or(0) as f64, 0.0, 100.0);
     let sentiment = fv.twitter_sentiment.unwrap_or(0.5).clamp(0.0, 1.0);
-    let followers = normalize_linear(fv.twitter_follower_count.unwrap_or(0) as f64, 0.0, 1_000_000.0);
+    let followers = normalize_linear(
+        fv.twitter_follower_count.unwrap_or(0) as f64,
+        0.0,
+        1_000_000.0,
+    );
     let signal = fv.signal_confidence.unwrap_or(0.3);
 
     mentions * 0.30 + sentiment * 0.20 + followers * 0.20 + signal * 0.30

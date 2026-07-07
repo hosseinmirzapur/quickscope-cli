@@ -3,22 +3,22 @@
 //! Pipeline:
 //!   FeatureVector → Hard Filters → Scoring → Rug Detection → Mode → Narrative → AlphaReport
 
-use chrono::Utc;
 use crate::data::models::*;
+use chrono::Utc;
 
 mod feature_vector;
-mod scoring;
 mod hard_filters;
-mod rug_detect;
 mod modes;
 mod narrative;
+mod rug_detect;
+mod scoring;
 
 pub use feature_vector::{extract_feature_vector, merge_twitter_data};
-pub use scoring::{compute_scores, alpha_score, sigmoid_log, normalize_linear, clamp_divide};
 pub use hard_filters::check_hard_filters;
-pub use rug_detect::detect_rug;
-pub use modes::{select_mode, sizing_for_mode, exit_params_for_mode};
+pub use modes::{exit_params_for_mode, select_mode, sizing_for_mode};
 pub use narrative::detect_narrative;
+pub use rug_detect::detect_rug;
+pub use scoring::{alpha_score, clamp_divide, compute_scores, normalize_linear, sigmoid_log};
 
 /// Run the full alpha filter pipeline on a TokenDetail.
 /// Returns a complete AlphaReport.
@@ -112,7 +112,9 @@ mod tests {
         let config = AlphaConfig::default();
         let report = analyze_token(&detail, &config);
         assert!(!report.hard_filter_result.passed);
-        assert!(report.rug_report.severity == RugSeverity::Critical
-            || report.rug_report.severity == RugSeverity::High);
+        assert!(
+            report.rug_report.severity == RugSeverity::Critical
+                || report.rug_report.severity == RugSeverity::High
+        );
     }
 }

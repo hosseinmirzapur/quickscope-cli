@@ -1,17 +1,17 @@
 //! Paper Trade Engine — simulated buy/sell, TP/SL monitoring, risk management.
 
-use anyhow::Result;
-use crate::data::models::*;
 use crate::alpha;
+use crate::data::models::*;
 use crate::storage::DbManager;
+use anyhow::Result;
 
-mod simulator;
-mod risk;
 mod monitor;
+mod risk;
+mod simulator;
 
-pub use simulator::{simulate_buy, simulate_sell, PaperBuyResult, PaperSellResult};
-pub use risk::RiskManager;
 pub use monitor::TpSlMonitor;
+pub use risk::RiskManager;
+pub use simulator::{simulate_buy, simulate_sell, PaperBuyResult, PaperSellResult};
 
 /// The trade engine orchestrator — wires everything together.
 pub struct TradeEngine {
@@ -39,13 +39,16 @@ impl TradeEngine {
         let report = alpha::analyze_token(detail, config);
 
         let open_count = crate::storage::positions::count_open_positions(&self.db.pool).await?;
-        let same_count = crate::storage::positions::count_open_for_token(
-            &self.db.pool, &detail.token.address,
-        ).await?;
+        let same_count =
+            crate::storage::positions::count_open_for_token(&self.db.pool, &detail.token.address)
+                .await?;
 
         let risk_result = self.risk_manager.check_pre_trade(
-            amount_sol, &report.mode, &report.sizing,
-            open_count as u64, same_count as u64,
+            amount_sol,
+            &report.mode,
+            &report.sizing,
+            open_count as u64,
+            same_count as u64,
         );
 
         match risk_result {
@@ -58,8 +61,11 @@ impl TradeEngine {
 
         let slippage = 3.0;
         let buy_result = simulate_buy(
-            amount_sol, current_price_usd, sol_price_usd,
-            slippage, detail.token.liquidity_usd,
+            amount_sol,
+            current_price_usd,
+            sol_price_usd,
+            slippage,
+            detail.token.liquidity_usd,
         );
 
         if buy_result.impact_warning {
@@ -89,7 +95,8 @@ impl TradeEngine {
             &fv_json,
             report.alpha_score,
             &rug_json,
-        ).await?;
+        )
+        .await?;
 
         Ok(buy_result)
     }
@@ -126,7 +133,8 @@ impl TradeEngine {
                 result.effective_price,
                 result.pnl_sol,
                 result.pnl_percent,
-            ).await?;
+            )
+            .await?;
 
             self.risk_manager.record_trade(result.pnl_sol);
         }

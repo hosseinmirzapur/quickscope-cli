@@ -23,18 +23,24 @@ QuickScope is a **Rust-based terminal user interface (TUI)** for memecoin alpha 
 |---|---|
 | Brainstorming & design | ✅ Complete — `docs/superpowers/specs/2026-07-05-quickscope-design.md` |
 | Implementation plan | ✅ Complete — `docs/superpowers/plans/2026-07-05-quickscope-implementation-plan.md` |
-| Scaffolding (Cargo, dirs, stubs) | ✅ Complete |
 | Storage (SQLite, positions, config, cache) | ✅ Complete |
 | Data — GMGN client (via gmgn-cli subprocess) | ✅ Complete |
-| Data — Alph AI client (REST + WebSocket skeleton) | ✅ Complete |
+| Data — Alph AI client (REST + WebSocket with auto-reconnect) | ✅ Complete |
 | Data — DEX Screener client + DataOrchestrator merge | ✅ Complete |
 | Alpha Filter engine (feature vector, 6-category scoring, rug, modes, narrative) | ✅ Complete |
 | Paper Trade Engine (simulator, risk manager, TP/SL monitor) | ✅ Complete |
 | Learning Engine (auto-tuner, discrimination analyzer, LLM providers) | ✅ Complete |
-| TUI Core (AppState, responsive event loop, theme system, 9 shared widgets) | ✅ Complete |
+| TUI Core (AppState, responsive event loop, theme system, 15 shared widgets) | ✅ Complete |
 | TUI Tabs (all 7 — Dashboard, Scanner, Analyzer, Trade, Journal, Strategy, Settings) | ✅ Complete |
-| UI Redesign (sidebar, command palette, marketcap/volume focus, toast, Clear modals) | ✅ Complete |
-| Integration, polish, docs | ✅ Complete — 103 tests, all docs updated |
+| Modal redesign (sweet-alert style with dimmed backdrop) | ✅ Complete |
+| Command palette (searchable, keyboard-navigable) | ✅ Complete |
+| Scroll/layer bug fixes (clamped offsets, overlay clearing) | ✅ Complete |
+| Scanner mode selector (Trending / Trenches / Watchlist / AI-Rec) | ✅ Complete |
+|  by Address (contract lookup via command palette) | ✅ Complete |
+| Theme system (Dark / Terminal / Degen / Cyberpunk) | ✅ Complete |
+| Error handling (fatal error modals for missing API keys) | ✅ Complete |
+| Alph AI WebSocket reconnect with exponential backoff | ✅ Complete |
+| Integration, polish, docs | ✅ Complete — 105 tests, all docs updated |
 
 ---
 
@@ -71,8 +77,8 @@ GMGN does NOT support IPv6. If `gmgn` calls fail with 401/403, check IPv6 first.
 ```
 src/
 ├── main.rs              # Entry point, TUI event loop
-├── app/                 # AppState, tab manager, input router
-├── ui/                  # ratatui rendering: sidebar + 7 tabs + reusable widgets + theme + format
+├── app/                 # AppState, TokenListMode, input router
+├── ui/                  # ratatui rendering: sidebar + 7 tabs + 15 widgets + theme + format
 ├── data/                # DataOrchestrator + GMGN + Alph AI + DEX Screener clients
 ├── alpha/               # Alpha Filter: scoring, rug detection, narrative, modes
 ├── trade/               # Paper trade engine: simulator, position, monitor, risk
@@ -88,9 +94,68 @@ Detailed responsibilities: see `docs/architecture.md`.
 
 | Source | Role | Auth | Notes |
 |---|---|---|---|---|
-| **GMGN** (primary) | Trending, trenches, token info/security, smart money, pricing | Ed25519 keypair (handled by `gmgn-cli` subprocess) | QuickScope calls `gmgn-cli` as subprocess, not raw HTTP. Ed25519 signing required. See `docs/api-reference/gmgn-endpoints.md`. |
-| **Alph AI** (secondary) | Twitter/X monitoring, real-time WS, signals, smart wallets | `ALPH_DEX_COOKIE` (14-day browser cookie) | Fills GMGN's Twitter gap. REST + WebSocket. See `docs/api-reference/alph-ai-endpoints.md`. |
+| **GMGN** (primary) | Trending, trenches, token info/security, smart money, pricing, signals | Ed25519 keypair (handled by `gmgn-cli` subprocess) | QuickScope calls `gmgn-cli` as subprocess, not raw HTTP. Ed25519 signing required. See `docs/api-reference/gmgn-endpoints.md`. |
+| **Alph AI** (secondary) | Twitter/X monitoring, real-time WS with auto-reconnect, signals, smart wallets | `ALPH_DEX_COOKIE` (14-day browser cookie) | Fills GMGN's Twitter gap. REST + WebSocket with exponential backoff reconnection. See `docs/api-reference/alph-ai-endpoints.md`. |
 | **DEX Screener** (tertiary) | Trending/boosts cross-reference | None (free) | Boosts conviction multiplier. See `docs/api-reference/dex-screener.md`. |
+
+---
+
+## Scanner Mode Selector
+
+The Scanner tab has a **mode selector bar** at the top with four data sources:
+- **Trending** — GMGN's trending tokens (default)
+- **Trenches** — Newly launched tokens from `gmgn-cli market trenches`
+- **Watchlist** — Filtered view showing only watchlisted tokens
+- **AI-Rec** — Tokens with Gold/Silver confidence signals from Alph AI
+
+Switch modes with `←`/`→` arrow keys when in the Scanner tab. Press `r` to refresh the current mode's data.
+
+---
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `↑`/`↓` | Navigate lists |
+| `←`/`→` | Switch tabs (or switch Scanner mode when in Scanner tab) |
+| `Enter` | Select / View token detail |
+| `Tab` / `Shift+Tab` | Next/Previous tab |
+| `r` | Refresh data (trenches if in Trenches mode) |
+| `/` | Search tokens |
+| `f` | Filter modal |
+| `Space` | Watchlist toggle |
+| `Esc` | Close modal / Back |
+| `?` | Help screen |
+| `Ctrl+P` | Command palette |
+| `Ctrl+B` | Toggle sidebar |
+| `Ctrl+E` | Emergency exit all |
+| `Ctrl+C` or `q` | Quit |
+
+**No VIM-style bindings** — all navigation uses arrow keys and explicit shortcuts.
+
+---
+
+## Modal System
+
+All modals use a **dimmed backdrop** (solid black fill) that obscures the content behind them, preventing ghost clicks and layering issues:
+- **Error modals:** Centered panel with dark background, colored border, action hints at bottom
+- **Command palette:** Centered overlay with search bar, filtered command list, keyboard navigation
+- **Confirm dialogs:** Enter/ESC action hints displayed at bottom
+
+Modals intentionally ignore mouse events to prevent accidental clicks on underlying content.
+
+---
+
+## Theme System
+
+Four themes are available, cycled via `Ctrl+P` → Cycle Theme:
+
+| Theme | Description |
+|-------|-------------|
+| **Dark** | OpenCode-inspired, blue accents on dark gray |
+| **Terminal** | Bloomberg-style, amber/green on deep black |
+| **Degen** | Neon green on dark purple |
+| **Cyberpunk** | Cyan/pink on dark purple |
 
 ---
 
@@ -103,7 +168,7 @@ cargo build
 # Run the TUI
 cargo run
 
-# Run tests
+# Run all tests (105 total)
 cargo test
 
 # Check without building
@@ -112,7 +177,7 @@ cargo check
 # Format
 cargo fmt
 
-# Lint
+# Lint (zero warnings required)
 cargo clippy -- -D warnings
 
 # Run a specific test
@@ -135,7 +200,7 @@ QUICKSCOPE_DB_PATH=~/.config/quickscope/data.db
 QUICKSCOPE_LOG_LEVEL=info
 ```
 
-Copy `.env.example` and fill in values.
+Copy `.env.example` and fill in values. Missing API keys will trigger a fatal error modal on startup.
 
 ---
 
@@ -158,11 +223,13 @@ Copy `.env.example` and fill in values.
 ## Conventions
 
 - **UI Layout:** `ui/layout.rs` uses sidebar | content split (not a top tab bar). Sidebar in `ui/sidebar.rs`.
-- **Overlays:** All modals use the `Modal` widget (with `Clear` backdrop). Command palette at `ui/widgets/command_palette.rs`.
+- **Overlays:** All modals use the `Modal` widget (with `Clear` + dark backdrop). Command palette at `ui/widgets/command_palette.rs`.
 - **Marketcap display:** Always use `format_marketcap()` + `marketcap_color()` from `ui/format.rs` for token values. Primary columns: marketcap, volume, change %. Price is secondary/muted.
+- **Market cap parsing:** GMGN returns `market_cap` in some responses and `marketCap` in others. The parser tries both (`parse_f64(v, "market_cap").or_else(|| parse_f64(v, "marketCap"))`).
 - **Toast notifications:** Use `state.notify()` to queue toasts. They auto-dismiss after 4s. Rendered via `Toast` widget.
-- **Key bindings:** Arrow keys (`↑`/`↓`) for navigation. No VIM-style `j`/`k`. `Ctrl+P` for command palette, `Ctrl+B` for sidebar toggle.
-- **Error handling:** `anyhow::Result` for application code, `thiserror` for library-style error enums in `data/` and `alpha/`.
+- **Key bindings:** Arrow keys (`↑`/`↓`) for navigation. **No VIM-style `j`/`k`.** `Ctrl+P` for command palette, `Ctrl+B` for sidebar toggle. `←`/`→` switch tabs globally, or switch Scanner mode when in Scanner tab.
+- **Mouse handling:** Content area clicks only fire on Dashboard, Scanner, and Analyzer tabs. Clicks on Trade, Journal, Strategy, Settings tabs are ignored. Modals and palettes block all mouse events.
+- **Error handling:** `anyhow::Result` for application code, `thiserror` for library-style error enums in `data/` and `alpha/`. Fatal errors (missing API keys, DB failures) show a centered modal.
 - **Async:** `tokio` runtime. All I/O (HTTP, WebSocket, SQLite) is async.
 - **State sharing:** `Arc<tokio::sync::Mutex<AppState>>` for shared mutable state across tasks.
 - **Logging:** `tracing` (never `println!` in libraries). TUI rendering must not log to stdout (it corrupts the terminal).

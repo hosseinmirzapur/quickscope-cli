@@ -25,7 +25,7 @@ pub async fn upsert_daily_risk(
          wins_today = excluded.wins_today, \
          losses_today = excluded.losses_today, \
          kill_switch_active = excluded.kill_switch_active, \
-         override_count = excluded.override_count"
+         override_count = excluded.override_count",
     )
     .bind(date)
     .bind(starting_balance)
@@ -53,12 +53,10 @@ pub async fn end_day(pool: &SqlitePool, date: &str) -> Result<()> {
 
 /// Get today's risk row (or None).
 pub async fn get_today_risk(pool: &SqlitePool, date: &str) -> Result<Option<DailyRiskRow>> {
-    let row = sqlx::query_as::<_, DailyRiskRow>(
-        "SELECT * FROM daily_risk WHERE date = ?"
-    )
-    .bind(date)
-    .fetch_optional(pool)
-    .await?;
+    let row = sqlx::query_as::<_, DailyRiskRow>("SELECT * FROM daily_risk WHERE date = ?")
+        .bind(date)
+        .fetch_optional(pool)
+        .await?;
     Ok(row)
 }
 
@@ -108,7 +106,7 @@ pub async fn add_to_watchlist(
 ) -> Result<()> {
     let now = Utc::now().to_rfc3339();
     sqlx::query(
-        "INSERT OR IGNORE INTO watchlist (token_address, token_symbol, added_at) VALUES (?, ?, ?)"
+        "INSERT OR IGNORE INTO watchlist (token_address, token_symbol, added_at) VALUES (?, ?, ?)",
     )
     .bind(token_address)
     .bind(token_symbol)
@@ -129,22 +127,18 @@ pub async fn remove_from_watchlist(pool: &SqlitePool, token_address: &str) -> Re
 
 /// Check if a token is on the watchlist.
 pub async fn is_watchlisted(pool: &SqlitePool, token_address: &str) -> Result<bool> {
-    let (count,): (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM watchlist WHERE token_address = ?"
-    )
-    .bind(token_address)
-    .fetch_one(pool)
-    .await?;
+    let (count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM watchlist WHERE token_address = ?")
+        .bind(token_address)
+        .fetch_one(pool)
+        .await?;
     Ok(count > 0)
 }
 
 /// Get all watchlisted tokens.
 pub async fn get_watchlist(pool: &SqlitePool) -> Result<Vec<WatchlistRow>> {
-    let rows = sqlx::query_as::<_, WatchlistRow>(
-        "SELECT * FROM watchlist ORDER BY added_at DESC"
-    )
-    .fetch_all(pool)
-    .await?;
+    let rows = sqlx::query_as::<_, WatchlistRow>("SELECT * FROM watchlist ORDER BY added_at DESC")
+        .fetch_all(pool)
+        .await?;
     Ok(rows)
 }
 
@@ -175,7 +169,7 @@ pub async fn log_tuning_run(
     sqlx::query(
         "INSERT INTO tuning_history (tuned_at, sample_size, wins, losses, \
          old_weights, new_weights, old_filters, new_filters, discrimination) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&tuned_at)
     .bind(sample_size)
@@ -197,7 +191,7 @@ pub async fn get_recent_tuning_runs(
     limit: i64,
 ) -> Result<Vec<TuningHistoryRow>> {
     let rows = sqlx::query_as::<_, TuningHistoryRow>(
-        "SELECT * FROM tuning_history ORDER BY tuned_at DESC LIMIT ?"
+        "SELECT * FROM tuning_history ORDER BY tuned_at DESC LIMIT ?",
     )
     .bind(limit)
     .fetch_all(pool)
@@ -234,7 +228,7 @@ pub async fn log_post_mortem(
     let run_at = Utc::now().to_rfc3339();
     let result = sqlx::query(
         "INSERT INTO post_mortems (run_at, period_start, period_end, provider, model, \
-         prompt_summary, response) VALUES (?, ?, ?, ?, ?, ?, ?)"
+         prompt_summary, response) VALUES (?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&run_at)
     .bind(period_start)
@@ -250,12 +244,9 @@ pub async fn log_post_mortem(
 }
 
 /// Get the most recent N post-mortems.
-pub async fn get_recent_post_mortems(
-    pool: &SqlitePool,
-    limit: i64,
-) -> Result<Vec<PostMortemRow>> {
+pub async fn get_recent_post_mortems(pool: &SqlitePool, limit: i64) -> Result<Vec<PostMortemRow>> {
     let rows = sqlx::query_as::<_, PostMortemRow>(
-        "SELECT * FROM post_mortems ORDER BY run_at DESC LIMIT ?"
+        "SELECT * FROM post_mortems ORDER BY run_at DESC LIMIT ?",
     )
     .bind(limit)
     .fetch_all(pool)
@@ -281,19 +272,15 @@ pub struct PostMortemRow {
 
 /// Get the portfolio singleton row.
 pub async fn get_portfolio(pool: &SqlitePool) -> Result<(f64, String)> {
-    let row: (f64, String) = sqlx::query_as(
-        "SELECT balance_sol, updated_at FROM portfolios WHERE id = 1"
-    )
-    .fetch_one(pool)
-    .await?;
+    let row: (f64, String) =
+        sqlx::query_as("SELECT balance_sol, updated_at FROM portfolios WHERE id = 1")
+            .fetch_one(pool)
+            .await?;
     Ok(row)
 }
 
 /// Update portfolio balance and timestamp.
-pub async fn update_portfolio_balance(
-    pool: &SqlitePool,
-    balance_sol: f64,
-) -> Result<()> {
+pub async fn update_portfolio_balance(pool: &SqlitePool, balance_sol: f64) -> Result<()> {
     let updated_at = Utc::now().to_rfc3339();
     sqlx::query("UPDATE portfolios SET balance_sol = ?, updated_at = ? WHERE id = 1")
         .bind(balance_sol)
@@ -323,7 +310,8 @@ mod tests {
         let today = Utc::now().format("%Y-%m-%d").to_string();
 
         upsert_daily_risk(&db.pool, &today, 50.0, 2.5, 3, 2, 1, false, 0)
-            .await.unwrap();
+            .await
+            .unwrap();
 
         let risk = get_today_risk(&db.pool, &today).await.unwrap().unwrap();
         assert_eq!(risk.daily_realized_pnl, 2.5);
@@ -333,7 +321,8 @@ mod tests {
 
         // Upsert with updated values
         upsert_daily_risk(&db.pool, &today, 50.0, -1.0, 5, 2, 3, true, 0)
-            .await.unwrap();
+            .await
+            .unwrap();
         let risk2 = get_today_risk(&db.pool, &today).await.unwrap().unwrap();
         assert_eq!(risk2.daily_realized_pnl, -1.0);
         assert!(risk2.kill_switch_active_bool());
@@ -363,11 +352,18 @@ mod tests {
         let (db, _dir) = setup_db().await;
 
         log_tuning_run(
-            &db.pool, 20, 12, 8,
-            r#"{"w_momentum":0.25}"#, r#"{"w_momentum":0.27}"#,
-            r#"{"hf_rug_ratio_max":0.30}"#, r#"{"hf_rug_ratio_max":0.28}"#,
+            &db.pool,
+            20,
+            12,
+            8,
+            r#"{"w_momentum":0.25}"#,
+            r#"{"w_momentum":0.27}"#,
+            r#"{"hf_rug_ratio_max":0.30}"#,
+            r#"{"hf_rug_ratio_max":0.28}"#,
             r#"{"momentum":0.45}"#,
-        ).await.unwrap();
+        )
+        .await
+        .unwrap();
 
         let runs = get_recent_tuning_runs(&db.pool, 5).await.unwrap();
         assert_eq!(runs.len(), 1);
@@ -380,10 +376,16 @@ mod tests {
         let (db, _dir) = setup_db().await;
 
         let id = log_post_mortem(
-            &db.pool, "2026-07-01", "2026-07-05",
-            "openai", "gpt-4o",
-            "Review trades", "Great job, but tighten SL",
-        ).await.unwrap();
+            &db.pool,
+            "2026-07-01",
+            "2026-07-05",
+            "openai",
+            "gpt-4o",
+            "Review trades",
+            "Great job, but tighten SL",
+        )
+        .await
+        .unwrap();
         assert!(id > 0);
 
         let mortems = get_recent_post_mortems(&db.pool, 5).await.unwrap();

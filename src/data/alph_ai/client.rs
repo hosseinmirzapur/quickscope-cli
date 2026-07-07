@@ -97,20 +97,12 @@ impl AlphAiClient {
 
     /// 24h stats for a token.
     pub async fn ticker_24h(&self, chain: &str, address: &str) -> Result<Value> {
-        self.get(&format!(
-            "/ticker/24h?chain={}&address={}",
-            chain, address
-        ))
-        .await
+        self.get(&format!("/ticker/24h?chain={}&address={}", chain, address))
+            .await
     }
 
     /// Get k-line (candlestick) history.
-    pub async fn kline(
-        &self,
-        chain: &str,
-        token: &str,
-        ktype: &str,
-    ) -> Result<Value> {
+    pub async fn kline(&self, chain: &str, token: &str, ktype: &str) -> Result<Value> {
         self.get(&format!(
             "/kline/new/history?chain={}&token={}&type={}",
             chain, token, ktype
@@ -133,12 +125,7 @@ impl AlphAiClient {
     }
 
     /// Newest token launches (snipe list).
-    pub async fn snipe_new(
-        &self,
-        chain: &str,
-        platform: &str,
-        filters: &Value,
-    ) -> Result<Value> {
+    pub async fn snipe_new(&self, chain: &str, platform: &str, filters: &Value) -> Result<Value> {
         let body = serde_json::json!({
             "chain": chain,
             "platform": platform,
@@ -150,7 +137,8 @@ impl AlphAiClient {
             "hasTwitter": filters.get("hasTwitter"),
             "bondingCurve": filters.get("bondingCurve"),
         });
-        self.post(&format!("/snipe/list/new/{}", chain), &body).await
+        self.post(&format!("/snipe/list/new/{}", chain), &body)
+            .await
     }
 
     /// AI-recommended new tokens (unique Alph AI signal).
@@ -168,7 +156,8 @@ impl AlphAiClient {
             "minLiquidityUsdt": filters.get("minLiquidityUsdt"),
             "hasTwitter": filters.get("hasTwitter"),
         });
-        self.post(&format!("/snipe/list/aimost/{}", chain), &body).await
+        self.post(&format!("/snipe/list/aimost/{}", chain), &body)
+            .await
     }
 
     /// Graduated tokens (bonding curve → DEX).
@@ -184,56 +173,56 @@ impl AlphAiClient {
             "minMarketCap": filters.get("minMarketCap"),
             "minLiquidityUsdt": filters.get("minLiquidityUsdt"),
         });
-        self.post(&format!("/snipe/list/graduated/{}", chain), &body).await
+        self.post(&format!("/snipe/list/graduated/{}", chain), &body)
+            .await
     }
 
     // ── Smart / Signals ────────────────────────────────────────
 
     /// Smart wallet list.
     pub async fn smart_wallets(&self, chain: &str) -> Result<Value> {
-        self.get(&format!("/smart/smart-wallet?chain={}", chain)).await
+        self.get(&format!("/smart/smart-wallet?chain={}", chain))
+            .await
     }
 
     /// Single wallet detail.
     pub async fn wallet_detail(&self, address: &str) -> Result<Value> {
-        self.get(&format!("/smart/wallet?address={}", address)).await
+        self.get(&format!("/smart/wallet?address={}", address))
+            .await
     }
 
     /// Wallet's held tokens.
     pub async fn wallet_holdings(&self, address: &str) -> Result<Value> {
-        self.get(&format!("/smart/holding-tokens?address={}", address)).await
+        self.get(&format!("/smart/holding-tokens?address={}", address))
+            .await
     }
 
     /// Wallet PnL breakdown (richer than GMGN).
     pub async fn wallet_pnl(&self, address: &str) -> Result<Value> {
-        self.get(&format!(
-            "/smart/wallet-profit-loss?address={}",
-            address
-        ))
-        .await
+        self.get(&format!("/smart/wallet-profit-loss?address={}", address))
+            .await
     }
 
     /// 1h hot tokens (smart money buys).
     pub async fn hot_tokens(&self, chain: &str) -> Result<Value> {
-        self.get(&format!("/smart/hot-tokens?chain={}", chain)).await
+        self.get(&format!("/smart/hot-tokens?chain={}", chain))
+            .await
     }
 
     /// 24h signal rank (Gold/Silver/Copper).
     pub async fn signal_rank_list(&self, chain: &str) -> Result<Value> {
-        self.get(&format!("/signal/rank-list?chain={}", chain)).await
+        self.get(&format!("/signal/rank-list?chain={}", chain))
+            .await
     }
 
     /// Latest signals.
     pub async fn signal_latest(&self, chain: &str) -> Result<Value> {
-        self.get(&format!("/signal/list/latest?chain={}", chain)).await
+        self.get(&format!("/signal/list/latest?chain={}", chain))
+            .await
     }
 
     /// Signals for a specific token.
-    pub async fn signal_by_token(
-        &self,
-        chain: &str,
-        address: &str,
-    ) -> Result<Value> {
+    pub async fn signal_by_token(&self, chain: &str, address: &str) -> Result<Value> {
         self.get(&format!(
             "/signal/list-by-token?chain={}&address={}",
             chain, address
@@ -257,11 +246,8 @@ impl AlphAiClient {
 
     /// Extract token CA from a tweet URL.
     pub async fn twitter_extract_ca(&self, tweet_url: &str) -> Result<Value> {
-        self.get(&format!(
-            "/token/twitter-search?url={}",
-            tweet_url
-        ))
-        .await
+        self.get(&format!("/token/twitter-search?url={}", tweet_url))
+            .await
     }
 
     /// Hot monitoring KOL list.
