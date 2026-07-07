@@ -1,5 +1,6 @@
 # Dependencies
 /target
+web-frontend/dist
 Cargo.lock
 
 # Environment / secrets
