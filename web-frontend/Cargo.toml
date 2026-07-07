@@ -1,0 +1,21 @@
+[package]
+name = "quickscope-web"
+version = "0.1.0"
+edition = "2021"
+description = "QuickScope web frontend (Leptos SPA)"
+
+[dependencies]
+leptos = { version = "0.7", features = ["csr"] }
+leptos_router = { version = "0.7", default-features = false }
+leptos_meta = { version = "0.7", default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+gloo-net = "0.6"
+console_log = "1"
+log = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+wasm-pack = "0.13"
