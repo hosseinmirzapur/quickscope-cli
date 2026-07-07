@@ -24,10 +24,7 @@ fn parse_nested_f64(v: &Value, outer: &str, inner: &str) -> Option<f64> {
 /// Parse a single trending token from GMGN's /market/rank response.
 pub fn parse_trending_token(v: &Value) -> Result<TrendingToken> {
     Ok(TrendingToken {
-        address: v["address"]
-            .as_str()
-            .unwrap_or("")
-            .to_string(),
+        address: v["address"].as_str().unwrap_or("").to_string(),
         symbol: v
             .get("symbol")
             .and_then(|s| s.as_str())
@@ -41,38 +38,29 @@ pub fn parse_trending_token(v: &Value) -> Result<TrendingToken> {
         price_usd: parse_nested_f64(v, "price", "price")
             .or_else(|| parse_f64(v, "price"))
             .unwrap_or(0.0),
-        market_cap: parse_f64(v, "marketCap").unwrap_or(0.0),
+        market_cap: parse_f64(v, "market_cap")
+            .or_else(|| parse_f64(v, "marketCap"))
+            .unwrap_or(0.0),
         liquidity_usd: parse_f64(v, "liquidity").unwrap_or(0.0),
         volume_5m: parse_nested_f64(v, "price", "volume_5m"),
         volume_1h: parse_nested_f64(v, "price", "volume_1h"),
         volume_24h: parse_nested_f64(v, "price", "volume_24h"),
-        change_5m: parse_nested_f64(v, "price", "change5m")
-            .or_else(|| parse_f64(v, "change5m")),
-        change_1h: parse_nested_f64(v, "price", "change1h")
-            .or_else(|| parse_f64(v, "change1h")),
-        change_24h: parse_nested_f64(v, "price", "change24h")
-            .or_else(|| parse_f64(v, "change24h")),
+        change_5m: parse_nested_f64(v, "price", "change5m").or_else(|| parse_f64(v, "change5m")),
+        change_1h: parse_nested_f64(v, "price", "change1h").or_else(|| parse_f64(v, "change1h")),
+        change_24h: parse_nested_f64(v, "price", "change24h").or_else(|| parse_f64(v, "change24h")),
         hot_level: v.get("hot_level").and_then(|h| h.as_u64()),
-        smart_degen_count: v
-            .get("smart_degen_count")
-            .and_then(|s| s.as_u64()),
-        renowned_count: v
-            .get("renowned_count")
-            .and_then(|r| r.as_u64()),
+        smart_degen_count: v.get("smart_degen_count").and_then(|s| s.as_u64()),
+        renowned_count: v.get("renowned_count").and_then(|r| r.as_u64()),
         holder_count: v.get("holder_count").and_then(|h| h.as_u64()),
         swaps_5m: v.get("swaps_5m").and_then(|s| s.as_u64()),
         swaps_1h: v.get("swaps_1h").and_then(|s| s.as_u64()),
-        is_on_curve: v
-            .get("is_on_curve")
-            .and_then(|i| i.as_bool()),
+        is_on_curve: v.get("is_on_curve").and_then(|i| i.as_bool()),
         launchpad_platform: v
             .get("launchpad_platform")
             .and_then(|l| l.as_str())
             .map(String::from),
         rug_ratio: parse_f64(v, "rug_ratio"),
-        dexscr_boost: v
-            .get("dexscr_boost")
-            .and_then(|d| d.as_bool()),
+        dexscr_boost: v.get("dexscr_boost").and_then(|d| d.as_bool()),
     })
 }
 
@@ -110,23 +98,14 @@ pub fn parse_kline_candle(v: &Value) -> Result<KlineCandle> {
             .and_then(|a| a.as_str())
             .and_then(|s| s.parse().ok())
             .unwrap_or(0.0),
-        buys: v
-            .get("buys")
-            .and_then(|b| b.as_u64())
-            .unwrap_or(0),
-        sells: v
-            .get("sells")
-            .and_then(|s| s.as_u64())
-            .unwrap_or(0),
+        buys: v.get("buys").and_then(|b| b.as_u64()).unwrap_or(0),
+        sells: v.get("sells").and_then(|s| s.as_u64()).unwrap_or(0),
     })
 }
 
 /// Parse a smart money trade from GMGN.
 pub fn parse_smart_money_trade(v: &Value) -> Result<SmartMoneyTrade> {
-    let side_str = v
-        .get("side")
-        .and_then(|s| s.as_str())
-        .unwrap_or("sell");
+    let side_str = v.get("side").and_then(|s| s.as_str()).unwrap_or("sell");
     let side = match side_str.to_lowercase().as_str() {
         "buy" => TradeSide::Buy,
         _ => TradeSide::Sell,
@@ -217,13 +196,8 @@ pub fn parse_token_signal(v: &Value) -> Result<TokenSignal> {
             .to_string(),
         signal_type: parse_signal_type(v),
         confidence: parse_signal_confidence(v),
-        trigger_at: v
-            .get("trigger_at")
-            .and_then(|t| t.as_i64())
-            .unwrap_or(0),
-        amount_usd: v
-            .get("amount_usd")
-            .and_then(|a| a.as_f64()),
+        trigger_at: v.get("trigger_at").and_then(|t| t.as_i64()).unwrap_or(0),
+        amount_usd: v.get("amount_usd").and_then(|a| a.as_f64()),
         description: v
             .get("description")
             .and_then(|d| d.as_str())
@@ -232,11 +206,7 @@ pub fn parse_token_signal(v: &Value) -> Result<TokenSignal> {
 }
 
 fn parse_signal_type(v: &Value) -> SignalType {
-    match v
-        .get("signal_type")
-        .and_then(|s| s.as_str())
-        .unwrap_or("")
-    {
+    match v.get("signal_type").and_then(|s| s.as_str()).unwrap_or("") {
         "price_spike" => SignalType::PriceSpike,
         "smart_money_buy" => SignalType::SmartMoneyBuy,
         "large_buy" => SignalType::LargeBuy,
@@ -307,10 +277,7 @@ pub fn parse_token_security(v: &Value) -> Result<TokenSecurity> {
             .and_then(|b| b.as_str())
             .unwrap_or("")
             .to_string(),
-        sniper_count: v
-            .get("sniper_count")
-            .and_then(|s| s.as_u64())
-            .unwrap_or(0),
+        sniper_count: v.get("sniper_count").and_then(|s| s.as_u64()).unwrap_or(0),
     })
 }
 
@@ -343,17 +310,12 @@ pub fn parse_dev_info(v: &Value) -> Result<DevInfo> {
             .get("creator_prev_tokens")
             .and_then(|c| c.as_u64())
             .unwrap_or(0),
-        creator_ath_mc: v
-            .get("creator_ath_mc")
-            .and_then(|c| c.as_f64()),
+        creator_ath_mc: v.get("creator_ath_mc").and_then(|c| c.as_f64()),
         creator_ath_token: v
             .get("creator_ath_token")
             .and_then(|c| c.as_str())
             .map(String::from),
-        cto_flag: v
-            .get("cto_flag")
-            .and_then(|c| c.as_bool())
-            .unwrap_or(false),
+        cto_flag: v.get("cto_flag").and_then(|c| c.as_bool()).unwrap_or(false),
         dexscr_ad: v
             .get("dexscr_ad")
             .and_then(|d| d.as_bool())
@@ -395,14 +357,8 @@ pub fn parse_wallet_tags(v: &Value) -> WalletTags {
             .get("bundler_wallets")
             .and_then(|b| b.as_u64())
             .unwrap_or(0),
-        whale_wallets: v
-            .get("whale_wallets")
-            .and_then(|w| w.as_u64())
-            .unwrap_or(0),
-        fresh_wallets: v
-            .get("fresh_wallets")
-            .and_then(|f| f.as_u64())
-            .unwrap_or(0),
+        whale_wallets: v.get("whale_wallets").and_then(|w| w.as_u64()).unwrap_or(0),
+        fresh_wallets: v.get("fresh_wallets").and_then(|f| f.as_u64()).unwrap_or(0),
     }
 }
 
@@ -472,10 +428,7 @@ pub fn parse_token_detail(
     pool: &Value,
 ) -> Result<TokenDetail> {
     let token = Token {
-        address: token_info["address"]
-            .as_str()
-            .unwrap_or("")
-            .to_string(),
+        address: token_info["address"].as_str().unwrap_or("").to_string(),
         symbol: token_info
             .get("symbol")
             .and_then(|s| s.as_str())
@@ -534,17 +487,13 @@ pub fn parse_token_detail(
 
 /// Parse an array of trending tokens.
 pub fn parse_trending_list(v: &Value) -> Result<Vec<TrendingToken>> {
-    let arr = v
-        .as_array()
-        .context("expected array of trending tokens")?;
+    let arr = v.as_array().context("expected array of trending tokens")?;
     arr.iter().map(parse_trending_token).collect()
 }
 
 /// Parse an array of kline candles.
 pub fn parse_kline_list(v: &Value) -> Result<Vec<KlineCandle>> {
-    let arr = v
-        .as_array()
-        .context("expected array of kline candles")?;
+    let arr = v.as_array().context("expected array of kline candles")?;
     arr.iter().map(parse_kline_candle).collect()
 }
 

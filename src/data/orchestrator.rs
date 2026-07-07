@@ -1,10 +1,10 @@
 use anyhow::Result;
 use serde_json::Value;
 
-use crate::data::models::*;
 use crate::data::alph_ai::AlphAiClient;
 use crate::data::dex_screener::DexScreenerClient;
 use crate::data::gmgn::GmgnClient;
+use crate::data::models::*;
 
 /// High-level facade that merges data from all three sources.
 ///
@@ -59,16 +59,19 @@ impl DataOrchestrator {
     pub async fn fetch_trenches(&self, token_type: &str) -> Result<Vec<TrenchToken>> {
         let data = self.gmgn.trenches(token_type).await?;
         let empty = vec![];
-        let arr = data.as_array()
-            .unwrap_or(&empty);
+        let arr = data.as_array().unwrap_or(&empty);
 
-        let tokens: Vec<TrenchToken> = arr.iter().map(|v| {
-            TrenchToken {
+        let tokens: Vec<TrenchToken> = arr
+            .iter()
+            .map(|v| TrenchToken {
                 address: v["address"].as_str().unwrap_or("").to_string(),
                 symbol: v["symbol"].as_str().unwrap_or("").to_string(),
                 name: v["name"].as_str().unwrap_or("").to_string(),
-                price_usd: v.get("price").and_then(|p| p["price"].as_f64())
-                    .or_else(|| v["price"].as_f64()).unwrap_or(0.0),
+                price_usd: v
+                    .get("price")
+                    .and_then(|p| p["price"].as_f64())
+                    .or_else(|| v["price"].as_f64())
+                    .unwrap_or(0.0),
                 market_cap: v["market_cap"].as_f64().unwrap_or(0.0),
                 liquidity_usd: v["liquidity"].as_f64().unwrap_or(0.0),
                 age_minutes: v["age_minutes"].as_u64().unwrap_or(0),
@@ -79,8 +82,8 @@ impl DataOrchestrator {
                 kol_calls: v["kol_calls"].as_u64().unwrap_or(0),
                 bonding_curve: v["bonding_curve"].as_bool().unwrap_or(false),
                 social: None,
-            }
-        }).collect();
+            })
+            .collect();
 
         Ok(tokens)
     }
@@ -104,7 +107,9 @@ impl DataOrchestrator {
         // Augment with Alph AI (social, AI description)
         match self.alph_ai.token_detail("sol", address).await {
             Ok(alph_data) => {
-                if let Ok(alph_detail) = crate::data::alph_ai::types::parse_alph_token_detail(&alph_data) {
+                if let Ok(alph_detail) =
+                    crate::data::alph_ai::types::parse_alph_token_detail(&alph_data)
+                {
                     // Merge social links if GMGN didn't have them
                     if detail.social_links.is_none() {
                         detail.social_links = alph_detail.social_links;
@@ -141,10 +146,7 @@ impl DataOrchestrator {
     // ── Smart Money / Signals ─────────────────────────────────
 
     /// Fetch smart money trades from GMGN.
-    pub async fn fetch_smart_money_trades(
-        &self,
-        limit: u32,
-    ) -> Result<Vec<SmartMoneyTrade>> {
+    pub async fn fetch_smart_money_trades(&self, limit: u32) -> Result<Vec<SmartMoneyTrade>> {
         let data = self.gmgn.smartmoney(limit).await?;
         let empty_smart = vec![];
         let arr = data.as_array().unwrap_or(&empty_smart);
@@ -171,7 +173,8 @@ impl DataOrchestrator {
     pub async fn fetch_signals_alph(&self) -> Result<Vec<TokenSignal>> {
         let data = self.alph_ai.signal_rank_list("sol").await?;
         let empty_alph_sig = vec![];
-        let arr = data.get("data")
+        let arr = data
+            .get("data")
             .and_then(|d| d.as_array())
             .unwrap_or(&empty_alph_sig);
         let signals: Vec<TokenSignal> = arr
@@ -192,7 +195,8 @@ impl DataOrchestrator {
     pub async fn search_tweets(&self, keyword: &str) -> Result<Vec<Tweet>> {
         let data = self.alph_ai.twitter_search(keyword).await?;
         let empty_alph_sig = vec![];
-        let arr = data.get("data")
+        let arr = data
+            .get("data")
             .and_then(|d| d.as_array())
             .unwrap_or(&empty_alph_sig);
         let tweets: Vec<Tweet> = arr
@@ -218,7 +222,8 @@ impl DataOrchestrator {
         amount: f64,
     ) -> Result<f64> {
         let data = self.gmgn.quote(input_token, output_token, amount).await?;
-        let price = data["data"]["price"].as_f64()
+        let price = data["data"]["price"]
+            .as_f64()
             .or_else(|| data["price"].as_f64())
             .unwrap_or(0.0);
         Ok(price)
