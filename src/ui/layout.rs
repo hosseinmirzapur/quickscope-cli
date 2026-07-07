@@ -6,9 +6,9 @@ use ratatui::{
     Frame,
 };
 
-use super::theme::Theme;
 use super::sidebar;
-use super::widgets::{Modal, Toast, ToastStyle, command_palette};
+use super::theme::Theme;
+use super::widgets::{command_palette, Modal, Toast, ToastStyle};
 use crate::app::AppState;
 
 /// Render the root layout: top bar → [sidebar + content] → bottom bar → overlays
@@ -20,9 +20,9 @@ pub fn render_ui(frame: &mut Frame, state: &AppState) {
     let root = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(1),  // Top status bar
-            Constraint::Min(3),     // Main area
-            Constraint::Length(1),  // Bottom keybinding bar
+            Constraint::Length(1), // Top status bar
+            Constraint::Min(3),    // Main area
+            Constraint::Length(1), // Bottom keybinding bar
         ])
         .split(full_area);
 
@@ -75,7 +75,12 @@ fn render_top_bar(frame: &mut Frame, area: Rect, state: &AppState, theme: &Theme
     };
 
     let bar_text = Line::from(vec![
-        Span::styled(" ⚡ QuickScope ", Style::default().fg(theme.accent).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            " ⚡ QuickScope ",
+            Style::default()
+                .fg(theme.accent)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw("│ "),
         Span::styled(
             format!("Balance: {:.2} SOL ", state.balance_sol),
@@ -87,7 +92,12 @@ fn render_top_bar(frame: &mut Frame, area: Rect, state: &AppState, theme: &Theme
         ),
         // Kill switch indicator
         if state.risk_state.kill_switch_active {
-            Span::styled("│ 🛑 KILL ", Style::default().fg(theme.danger).add_modifier(Modifier::BOLD))
+            Span::styled(
+                "│ 🛑 KILL ",
+                Style::default()
+                    .fg(theme.danger)
+                    .add_modifier(Modifier::BOLD),
+            )
         } else {
             Span::raw("")
         },
@@ -118,27 +128,39 @@ fn render_content(frame: &mut Frame, area: Rect, state: &AppState, theme: &Theme
         TabIndex::Dashboard => super::widgets::dashboard::render(frame, area, state, theme),
         TabIndex::Scanner => super::widgets::scanner::render(frame, area, state, theme),
         TabIndex::Analyzer => super::widgets::analyzer::render(frame, area, state, theme),
-        TabIndex::TradeTerminal => super::widgets::trade_terminal::render(frame, area, state, theme),
+        TabIndex::TradeTerminal => {
+            super::widgets::trade_terminal::render(frame, area, state, theme)
+        }
         TabIndex::Journal => super::widgets::journal::render(frame, area, state, theme),
         TabIndex::Strategy => super::widgets::strategy::render(frame, area, state, theme),
         TabIndex::Settings => super::widgets::settings::render(frame, area, state, theme),
     }
 }
 
-/// Modal dialog overlay using the Modal widget (with Clear backdrop)
+/// Modal dialog overlay using the Modal widget (with dimmed backdrop)
 fn render_modal(frame: &mut Frame, full_area: Rect, state: &AppState, theme: &Theme) {
     let title = state.modal_message.lines().next().unwrap_or("QuickScope");
-    let body = state.modal_message.lines().skip(1).collect::<Vec<_>>().join("\n");
+    let body = state
+        .modal_message
+        .lines()
+        .skip(1)
+        .collect::<Vec<_>>()
+        .join("\n");
     let has_confirm = state.modal_message.contains("ENTER to confirm")
         || state.modal_message.contains("Press ENTER");
-    let has_cancel = state.modal_message.contains("ESC to cancel")
-        || state.modal_message.contains("Esc");
+    let has_cancel =
+        state.modal_message.contains("ESC to cancel") || state.modal_message.contains("Esc");
+
+    // Calculate dynamic height based on message length
+    let line_count = body.lines().count().max(3) as u16;
+    let height = (line_count + 6).min(full_area.height.saturating_sub(4));
+    let width = 60_u16.min(full_area.width.saturating_sub(4));
 
     let modal = Modal {
         title,
         message: &body,
-        width: 60,
-        height: 12,
+        width,
+        height,
         confirm_label: if has_confirm { Some("Enter") } else { None },
         cancel_label: if has_cancel { Some("Esc") } else { None },
         accent_color: theme.accent,
@@ -150,8 +172,11 @@ fn render_modal(frame: &mut Frame, full_area: Rect, state: &AppState, theme: &Th
 fn render_bottom_bar(frame: &mut Frame, area: Rect, _state: &AppState, theme: &Theme) {
     let line = Line::from(vec![
         Span::styled(" ↑↓:Navigate ", Style::default().fg(theme.muted)),
+        Span::styled(" ←→:Tabs ", Style::default().fg(theme.muted)),
         Span::styled(" Enter:Select ", Style::default().fg(theme.muted)),
         Span::styled(" r:Refresh ", Style::default().fg(theme.muted)),
+        Span::styled(" f:Filter ", Style::default().fg(theme.muted)),
+        Span::styled(" /:Search ", Style::default().fg(theme.muted)),
         Span::styled(" Ctrl+P:Commands ", Style::default().fg(theme.accent)),
         Span::styled(" ?:Help ", Style::default().fg(theme.muted)),
         Span::styled(" q:Quit ", Style::default().fg(theme.danger)),

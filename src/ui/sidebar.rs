@@ -17,18 +17,45 @@ struct TabMeta {
 }
 
 const TAB_META: [TabMeta; 7] = [
-    TabMeta { icon: "⬡", label: "Dashboard" },
-    TabMeta { icon: "⌕", label: "Scanner" },
-    TabMeta { icon: "◎", label: "Analyzer" },
-    TabMeta { icon: "⟠", label: "Trade" },
-    TabMeta { icon: "☰", label: "Journal" },
-    TabMeta { icon: "⚙", label: "Strategy" },
-    TabMeta { icon: "◆", label: "Settings" },
+    TabMeta {
+        icon: "⬡",
+        label: "Dashboard",
+    },
+    TabMeta {
+        icon: "⌕",
+        label: "Scanner",
+    },
+    TabMeta {
+        icon: "◎",
+        label: "Analyzer",
+    },
+    TabMeta {
+        icon: "⟠",
+        label: "Trade",
+    },
+    TabMeta {
+        icon: "☰",
+        label: "Journal",
+    },
+    TabMeta {
+        icon: "⚙",
+        label: "Strategy",
+    },
+    TabMeta {
+        icon: "◆",
+        label: "Settings",
+    },
 ];
 
 /// Render the sidebar with tab icons.
 /// `sidebar_width` is the width allocated to the sidebar (6 expanded, 3 collapsed).
-pub fn render_sidebar(frame: &mut Frame, area: Rect, state: &AppState, theme: &Theme, sidebar_width: u16) {
+pub fn render_sidebar(
+    frame: &mut Frame,
+    area: Rect,
+    state: &AppState,
+    theme: &Theme,
+    sidebar_width: u16,
+) {
     let collapsed = sidebar_width < 5;
     let mut lines: Vec<Line> = Vec::with_capacity(TabIndex::COUNT);
 
@@ -38,7 +65,11 @@ pub fn render_sidebar(frame: &mut Frame, area: Rect, state: &AppState, theme: &T
     for (i, meta) in TAB_META.iter().enumerate() {
         let is_active = i == state.active_tab.as_usize();
         let bg = theme.sidebar_bg;
-        let fg = if is_active { theme.sidebar_active } else { theme.muted };
+        let fg = if is_active {
+            theme.sidebar_active
+        } else {
+            theme.muted
+        };
 
         // Active indicator bar on the left
         let indicator = if is_active {
@@ -47,10 +78,11 @@ pub fn render_sidebar(frame: &mut Frame, area: Rect, state: &AppState, theme: &T
             Span::styled(" ", Style::default().fg(bg))
         };
 
-        let icon_style = Style::default()
-            .fg(fg)
-            .bg(bg)
-            .add_modifier(if is_active { Modifier::BOLD } else { Modifier::empty() });
+        let icon_style = Style::default().fg(fg).bg(bg).add_modifier(if is_active {
+            Modifier::BOLD
+        } else {
+            Modifier::empty()
+        });
 
         let icon = Span::styled(meta.icon, icon_style);
 
