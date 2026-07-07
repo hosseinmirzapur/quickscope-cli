@@ -1,13 +1,14 @@
 //! Sidebar navigation component.
 
-use leptos::*;
-use leptos_router::*;
+use leptos::prelude::*;
+use leptos_router::hooks::use_location;
+use leptos_router::components::A;
 
 #[component]
 pub fn Sidebar() -> impl IntoView {
     let location = use_location();
 
-    let active_tab = move |path: &str| {
+    let active_tab = move |path: &str| -> &'static str {
         if location.pathname.get() == path {
             "active"
         } else {
@@ -15,7 +16,7 @@ pub fn Sidebar() -> impl IntoView {
         }
     };
 
-    let tabs = vec![
+    let tabs: Vec<(&str, &str, &str)> = vec![
         ("/", "📊", "Dashboard"),
         ("/scanner", "🔍", "Scanner"),
         ("/trade", "💰", "Trade"),
@@ -31,12 +32,12 @@ pub fn Sidebar() -> impl IntoView {
                 <p class="text-xs text-gray-500">"Alpha Scanner"</p>
             </div>
             {tabs.into_iter().map(|(path, icon, label)| {
-                let class = format!("sidebar-tab {}", active_tab(path));
+                let class_str = if active_tab(path) == "active" { "sidebar-tab active" } else { "sidebar-tab" };
                 view! {
-                    <a href=path class=class>
+                    <A href=path attr:class=class_str>
                         <span>{icon}</span>
                         <span>{label}</span>
-                    </a>
+                    </A>
                 }
             }).collect::<Vec<_>>()}
         </nav>

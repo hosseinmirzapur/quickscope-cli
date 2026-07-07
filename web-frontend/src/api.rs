@@ -20,10 +20,11 @@ async fn get<T: DeserializeOwned>(path: &str) -> Result<T, String> {
 async fn post<T: DeserializeOwned>(path: &str, body: &impl serde::Serialize) -> Result<T, String> {
     let url = format!("{}{}", BASE_URL, path);
     let json = serde_json::to_string(body).map_err(|e| e.to_string())?;
-    Request::post(&url)
+    let req = Request::post(&url)
         .header("Content-Type", "application/json")
         .body(&json)
-        .send()
+        .map_err(|e| e.to_string())?;
+    req.send()
         .await
         .map_err(|e| e.to_string())?
         .json::<T>()

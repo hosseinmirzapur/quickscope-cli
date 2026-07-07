@@ -1,16 +1,18 @@
 //! Trade page — paper trading interface.
 
-use leptos::*;
+use leptos::either::Either;
+use leptos::prelude::*;
+use leptos::task::spawn_local;
 use serde_json::Value;
 use crate::api;
 
 #[component]
 pub fn Trade() -> impl IntoView {
-    let (positions, set_positions) = create_signal::<Vec<Value>>(Vec::new());
-    let (token_addr, set_token_addr) = create_signal("".to_string());
-    let (amount, set_amount) = create_signal(0.1f64);
-    let (mode, set_mode) = create_signal("ALPHA".to_string());
-    let (result_msg, set_result_msg) = create_signal("".to_string());
+    let (positions, set_positions) = signal::<Vec<Value>>(Vec::new());
+    let (token_addr, set_token_addr) = signal("".to_string());
+    let (amount, set_amount) = signal(0.1f64);
+    let (mode, set_mode) = signal("ALPHA".to_string());
+    let (result_msg, set_result_msg) = signal("".to_string());
 
     let fetch_positions = move || {
         spawn_local(async move {
@@ -43,6 +45,18 @@ pub fn Trade() -> impl IntoView {
         });
     };
 
+    let on_addr_input = move |ev: leptos::ev::Event| {
+        set_token_addr.set(event_target_value(&ev));
+    };
+
+    let on_amount_input = move |ev: leptos::ev::Event| {
+        set_amount.set(event_target_value(&ev).parse().unwrap_or(0.1));
+    };
+
+    let on_mode_change = move |ev: leptos::ev::Event| {
+        set_mode.set(event_target_value(&ev));
+    };
+
     view! {
         <div class="space-y-6">
             <h2 class="text-2xl font-bold text-white">"Paper Trade"</h2>
@@ -53,16 +67,16 @@ pub fn Trade() -> impl IntoView {
                     <div>
                         <label class="text-sm text-gray-400 block mb-1">"Token Address"</label>
                         <input class="input" type="text" placeholder="Enter token address"
-                            on:input=move |e| set_token_addr.set(event_target_value(&e)) />
+                            on:input=on_addr_input />
                     </div>
                     <div>
                         <label class="text-sm text-gray-400 block mb-1">"Amount (SOL)"</label>
                         <input class="input" type="number" step="0.1" min="0.1" value="0.1"
-                            on:input=move |e| set_amount.set(event_target_value(&e).parse().unwrap_or(0.1)) />
+                            on:input=on_amount_input />
                     </div>
                     <div>
                         <label class="text-sm text-gray-400 block mb-1">"Mode"</label>
-                        <select class="input" on:change=move |e| set_mode.set(event_target_value(&e))>
+                        <select class="input" on:change=on_mode_change>
                             <option value="EXPLODE">"EXPLODE"</option>
                             <option value="ALPHA" selected>"ALPHA"</option>
                             <option value="SCALP">"SCALP"</option>
@@ -71,9 +85,9 @@ pub fn Trade() -> impl IntoView {
                     </div>
                     <button class="btn btn-primary w-full" on:click=do_buy>"Buy"</button>
                     {move || if !result_msg.get().is_empty() {
-                        view! { <p class="text-sm text-green-400">{result_msg.get()}</p> }
+                        Either::Left(view! { <p class="text-sm text-green-400">{result_msg.get()}</p> })
                     } else {
-                        view! { <></> }
+                        Either::Right(())
                     }}
                 </div>
             </div>
@@ -90,22 +104,25 @@ pub fn Trade() -> impl IntoView {
                         </tr>
                     </thead>
                     <tbody>
-                        {move || positions.get().iter().map(|p| {
-                            let symbol = p.get("token_symbol").and_then(|s| s.as_str()).unwrap_or("?");
-                            let entry = p.get("entry_price").and_then(|e| e.as_f64()).unwrap_or(0.0);
-                            let amt = p.get("amount_sol").and_then(|a| a.as_f64()).unwrap_or(0.0);
-                            let mode = p.get("mode").and_then(|m| m.as_str()).unwrap_or("?");
+                        {move || {
+                            let items: Vec<Value> = positions.with(|p| p.clone()).into_iter().collect();
+                            items.into_iter().map(|p| {
+                                let symbol = p.get("token_symbol").and_then(|s| s.as_str()).map(|s| s.to_string()).unwrap_or_else(|| "?".to_string());
+                                let entry = p.get("entry_price").and_then(|e| e.as_f64()).unwrap_or(0.0);
+                                let amt = p.get("amount_sol").and_then(|a| a.as_f64()).unwrap_or(0.0);
+                                let mode_str = p.get("mode").and_then(|m| m.as_str()).map(|m| m.to_string()).unwrap_or_else(|| "?".to_string());
                             view! {
                                 <tr class="border-b border-gray-800">
                                     <td class="table-cell font-medium">{symbol}</td>
                                     <td class="table-cell text-gray-400">{format!("${:.8}", entry)}</td>
                                     <td class="table-cell">{format!("{:.2} SOL", amt)}</td>
                                     <td class="table-cell">
-                                        <span class="badge badge-green">{mode}</span>
+                                        <span class="badge badge-green">{mode_str}</span>
                                     </td>
                                 </tr>
                             }
-                        }).collect::<Vec<_>>()}
+                        }).collect::<Vec<_>>()
+                        }}
                     </tbody>
                 </table>
             </div>

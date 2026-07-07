@@ -1,12 +1,13 @@
 //! Strategy page — alpha filter configuration.
 
-use leptos::*;
+use leptos::prelude::*;
+use leptos::task::spawn_local;
 use serde_json::Value;
 use crate::api;
 
 #[component]
 pub fn Strategy() -> impl IntoView {
-    let (config, set_config) = create_signal::<Option<Value>>(None);
+    let (config, set_config) = signal::<Option<Value>>(None);
 
     spawn_local(async move {
         if let Ok(data) = api::fetch_strategy().await {

@@ -1,12 +1,13 @@
 //! Journal page — trade history.
 
-use leptos::*;
+use leptos::prelude::*;
+use leptos::task::spawn_local;
 use serde_json::Value;
 use crate::api;
 
 #[component]
 pub fn Journal() -> impl IntoView {
-    let (entries, set_entries) = create_signal::<Vec<Value>>(Vec::new());
+    let (entries, set_entries) = signal::<Vec<Value>>(Vec::new());
 
     spawn_local(async move {
         if let Ok(data) = api::fetch_journal().await {
@@ -32,16 +33,18 @@ pub fn Journal() -> impl IntoView {
                         </tr>
                     </thead>
                     <tbody>
-                        {move || entries.get().iter().map(|e| {
-                            let symbol = e.get("token_symbol").and_then(|s| s.as_str()).unwrap_or("?");
-                            let entry = e.get("entry_price").and_then(|ep| ep.as_f64()).unwrap_or(0.0);
-                            let exit = e.get("exit_price").and_then(|ep| ep.as_f64());
-                            let pnl = e.get("pnl_sol").and_then(|p| p.as_f64());
-                            let mode = e.get("mode").and_then(|m| m.as_str()).unwrap_or("?");
-                            let status = e.get("status").and_then(|s| s.as_str()).unwrap_or("?");
+                        {move || {
+                            let items: Vec<Value> = entries.with(|e| e.clone()).into_iter().take(50).collect();
+                            items.into_iter().map(|e| {
+                                let symbol = e.get("token_symbol").and_then(|s| s.as_str()).map(|s| s.to_string()).unwrap_or_else(|| "?".to_string());
+                                let entry = e.get("entry_price").and_then(|ep| ep.as_f64()).unwrap_or(0.0);
+                                let exit = e.get("exit_price").and_then(|ep| ep.as_f64());
+                                let pnl = e.get("pnl_sol").and_then(|p| p.as_f64());
+                                let mode_val = e.get("mode").and_then(|m| m.as_str()).map(|m| m.to_string()).unwrap_or_else(|| "?".to_string());
+                                let status = e.get("status").and_then(|s| s.as_str()).map(|s| s.to_string()).unwrap_or_else(|| "?".to_string());
                             let pnl_str = pnl.map(|p| if p > 0.0 { format!("+{:.4}", p) } else { format!("{:.4}", p) }).unwrap_or_else(|| "-".to_string());
                             let pnl_color = pnl.map(|p| if p > 0.0 { "text-green-400" } else { "text-red-400" }).unwrap_or("text-gray-400");
-                            let status_badge = if status == "open" { "badge-green" } else { "badge-yellow" };
+                            let status_badge = if status == "open" { "badge badge-green" } else { "badge badge-yellow" };
 
                             view! {
                                 <tr class="border-b border-gray-800">
@@ -49,11 +52,12 @@ pub fn Journal() -> impl IntoView {
                                     <td class="table-cell text-gray-400">{format!("${:.8}", entry)}</td>
                                     <td class="table-cell text-gray-400">{exit.map(|e| format!("${:.8}", e)).unwrap_or_else(|| "-".to_string())}</td>
                                     <td class=format!("table-cell {}", pnl_color)>{pnl_str}</td>
-                                    <td class="table-cell">{mode}</td>
-                                    <td class="table-cell"><span class=format!("badge {}", status_badge)>{status}</span></td>
+                                    <td class="table-cell">{mode_val}</td>
+                                    <td class="table-cell"><span class=status_badge>{status}</span></td>
                                 </tr>
                             }
-                        }).collect::<Vec<_>>()}
+                        }).collect::<Vec<_>>()
+                        }}
                     </tbody>
                 </table>
             </div>

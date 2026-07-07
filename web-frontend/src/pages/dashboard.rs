@@ -1,14 +1,15 @@
 //! Dashboard page — overview of portfolio, signals, and activity.
 
-use leptos::*;
+use leptos::prelude::*;
+use leptos::task::spawn_local;
 use serde_json::Value;
 use crate::api;
 
 #[component]
 pub fn Dashboard() -> impl IntoView {
-    let (positions, set_positions) = create_signal::<Option<Value>>(None);
-    let (settings, set_settings) = create_signal::<Option<Value>>(None);
-    let (trending, set_trending) = create_signal::<Option<Value>>(None);
+    let (positions, set_positions) = signal::<Option<Value>>(None);
+    let (settings, set_settings) = signal::<Option<Value>>(None);
+    let (trending, set_trending) = signal::<Option<Value>>(None);
 
     spawn_local(async move {
         if let Ok(data) = api::fetch_positions().await {
@@ -40,21 +41,25 @@ pub fn Dashboard() -> impl IntoView {
                 <div class="card">
                     <p class="text-sm text-gray-400">"Open Positions"</p>
                     <p class="text-2xl font-bold text-blue-400">
-                        {move || positions.get()
-                            .and_then(|p| p.get("positions").and_then(|arr| arr.as_array()))
-                            .map(|arr| arr.len().to_string())
-                            .unwrap_or_else(|| "0".to_string())
-                        }
+                        {move || positions.with(|p| {
+                            p.as_ref()
+                                .and_then(|p| p.get("positions"))
+                                .and_then(|arr| arr.as_array())
+                                .map(|arr| arr.len().to_string())
+                                .unwrap_or_else(|| "0".to_string())
+                        })}
                     </p>
                 </div>
                 <div class="card">
                     <p class="text-sm text-gray-400">"Trending Tokens"</p>
                     <p class="text-2xl font-bold text-yellow-400">
-                        {move || trending.get()
-                            .and_then(|t| t.get("tokens").and_then(|arr| arr.as_array()))
-                            .map(|arr| arr.len().to_string())
-                            .unwrap_or_else(|| "0".to_string())
-                        }
+                        {move || trending.with(|t| {
+                            t.as_ref()
+                                .and_then(|t| t.get("tokens"))
+                                .and_then(|arr| arr.as_array())
+                                .map(|arr| arr.len().to_string())
+                                .unwrap_or_else(|| "0".to_string())
+                        })}
                     </p>
                 </div>
             </div>
