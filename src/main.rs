@@ -20,7 +20,6 @@ use quickscope::storage::DbManager;
 use quickscope::trade::TradeEngine;
 use quickscope::ui;
 
-
 #[derive(Parser)]
 #[command(name = "quickscope", about = "Solana memecoin alpha hunting TUI")]
 struct Cli {
@@ -62,6 +61,9 @@ async fn main() -> Result<()> {
         state.balance_sol = balance;
     }
 
+    // Check for missing API keys on startup — show modal if critical ones are missing
+    state.check_api_keys();
+
     let trade_engine = Arc::new(tokio::sync::Mutex::new(TradeEngine::new(db)));
 
     // Terminal
@@ -80,7 +82,9 @@ async fn main() -> Result<()> {
         loop {
             if crossterm::event::poll(Duration::from_millis(16)).unwrap_or(false) {
                 if let Ok(event) = crossterm::event::read() {
-                    if event_tx.send(event).is_err() { break; }
+                    if event_tx.send(event).is_err() {
+                        break;
+                    }
                 }
             }
             tokio::task::yield_now().await;
@@ -106,7 +110,9 @@ async fn main() -> Result<()> {
 
     // ── Main loop ───────────────────────────────────────────────
     loop {
-        if !state.running { break; }
+        if !state.running {
+            break;
+        }
 
         terminal.draw(|frame| {
             ui::render_ui(frame, &state);
@@ -138,7 +144,11 @@ async fn main() -> Result<()> {
     }
 
     disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
     terminal.show_cursor()?;
     Ok(())
 }
@@ -163,88 +173,202 @@ async fn dispatch_commands(
         tokio::spawn(async move {
             let result = match cmd {
                 // ── Fetch commands ───────────────────────────────
-                AppCommand::FetchTrending => {
-                    match orch.fetch_trending().await {
-                        Ok(t) => { let _ = tx.send(DataEvent::TrendingUpdated(t)); Ok(()) }
-                        Err(e) => { let _ = tx.send(DataEvent::ConnectionError("trending".into(), e.to_string())); Err(()) }
+                AppCommand::FetchTrending => match orch.fetch_trending().await {
+                    Ok(t) => {
+                        let _ = tx.send(DataEvent::TrendingUpdated(t));
+                        Ok(())
                     }
-                }
+                    Err(e) => {
+                        let _ =
+                            tx.send(DataEvent::ConnectionError("trending".into(), e.to_string()));
+                        Err(())
+                    }
+                },
                 AppCommand::FetchTokenDetail(addr) => {
                     let a = addr.clone();
                     match orch.fetch_token_detail(&a).await {
-                        Ok(d) => { let _ = tx.send(DataEvent::TokenLoaded(Box::new(d))); Ok(()) }
-                        Err(e) => { let _ = tx.send(DataEvent::ConnectionError("token_detail".into(), e.to_string())); Err(()) }
+                        Ok(d) => {
+                            let _ = tx.send(DataEvent::TokenLoaded(Box::new(d)));
+                            Ok(())
+                        }
+                        Err(e) => {
+                            let _ = tx.send(DataEvent::ConnectionError(
+                                "token_detail".into(),
+                                e.to_string(),
+                            ));
+                            Err(())
+                        }
                     }
                 }
                 AppCommand::FetchKline(addr, res, from, to) => {
                     match orch.fetch_kline(&addr, &res, from, to).await {
-                        Ok(c) => { let _ = tx.send(DataEvent::KlineUpdated(addr, c)); Ok(()) }
-                        Err(e) => { let _ = tx.send(DataEvent::ConnectionError("kline".into(), e.to_string())); Err(()) }
-                    }
-                }
-                AppCommand::FetchSmartMoney => {
-                    match orch.fetch_smart_money_trades(20).await {
-                        Ok(t) => { let _ = tx.send(DataEvent::SmartMoneyActivity(t)); Ok(()) }
-                        Err(e) => { let _ = tx.send(DataEvent::ConnectionError("smart_money".into(), e.to_string())); Err(()) }
-                    }
-                }
-                AppCommand::FetchSignals => {
-                    match orch.fetch_signals_gmgn().await {
-                        Ok(signals) => { for sig in signals { let _ = tx.send(DataEvent::SignalReceived(sig)); } Ok(()) }
-                        Err(e) => { let _ = tx.send(DataEvent::ConnectionError("signals".into(), e.to_string())); Err(()) }
-                    }
-                }
-                AppCommand::FetchTrenches(tt) => {
-                    match orch.fetch_trenches(&tt).await {
-                        Ok(t) => { let _ = tx.send(DataEvent::TrenchesUpdated(t)); Ok(()) }
-                        Err(e) => { let _ = tx.send(DataEvent::ConnectionError("trenches".into(), e.to_string())); Err(()) }
-                    }
-                }
-
-                // ── Trade commands ───────────────────────────────
-                AppCommand::PaperBuy { token_address, amount_sol, mode: _, tp_percent, sl_percent } => {
-                    let mut eng = engine.lock().await;
-                    // Need token detail for trade — fetch it
-                    match orch.fetch_token_detail(&token_address).await {
-                        Ok(detail) => {
-                            let config = quickscope::storage::config::load_alpha_config(&db_pool).await.unwrap_or_default();
-                            let report = quickscope::alpha::analyze_token(&detail, &config);
-                            let (_tp, _sl) = (tp_percent.unwrap_or_else(|| {
-                                quickscope::alpha::exit_params_for_mode(&report.mode).0
-                            }), sl_percent.unwrap_or_else(|| {
-                                quickscope::alpha::exit_params_for_mode(&report.mode).1
-                            }));
-                            match eng.paper_buy(&detail, &config, amount_sol, detail.token.price_usd, 150.0).await {
-                                Ok(result) => {
-                                    let _ = tx.send(DataEvent::ConnectionError("trade".into(),
-                                        format!("Paper buy executed: {} SOL → {} tokens at ${:.6}",
-                                            amount_sol, result.tokens_received, result.effective_price)));
-                                    Ok(())
-                                }
-                                Err(e) => {
-                                    let _ = tx.send(DataEvent::ConnectionError("paper_buy".into(), e.to_string()));
-                                    Err(())
-                                }
-                            }
+                        Ok(c) => {
+                            let _ = tx.send(DataEvent::KlineUpdated(addr, c));
+                            Ok(())
                         }
                         Err(e) => {
-                            let _ = tx.send(DataEvent::ConnectionError("paper_buy".into(), e.to_string()));
+                            let _ =
+                                tx.send(DataEvent::ConnectionError("kline".into(), e.to_string()));
+                            Err(())
+                        }
+                    }
+                }
+                AppCommand::FetchSmartMoney => match orch.fetch_smart_money_trades(20).await {
+                    Ok(t) => {
+                        let _ = tx.send(DataEvent::SmartMoneyActivity(t));
+                        Ok(())
+                    }
+                    Err(e) => {
+                        let _ = tx.send(DataEvent::ConnectionError(
+                            "smart_money".into(),
+                            e.to_string(),
+                        ));
+                        Err(())
+                    }
+                },
+                AppCommand::FetchSignals => match orch.fetch_signals_gmgn().await {
+                    Ok(signals) => {
+                        for sig in signals {
+                            let _ = tx.send(DataEvent::SignalReceived(sig));
+                        }
+                        Ok(())
+                    }
+                    Err(e) => {
+                        let _ =
+                            tx.send(DataEvent::ConnectionError("signals".into(), e.to_string()));
+                        Err(())
+                    }
+                },
+                AppCommand::FetchTrenches(tt) => match orch.fetch_trenches(&tt).await {
+                    Ok(t) => {
+                        let _ = tx.send(DataEvent::TrenchesUpdated(t));
+                        Ok(())
+                    }
+                    Err(e) => {
+                        let _ =
+                            tx.send(DataEvent::ConnectionError("trenches".into(), e.to_string()));
+                        Err(())
+                    }
+                },
+
+                // ── Strategy data loading ──────────────────────────
+                AppCommand::FetchAutoTuneHistory => {
+                    match quickscope::storage::journal::get_recent_tuning_runs(&db_pool, 10).await {
+                        Ok(runs) => {
+                            let _ = tx.send(DataEvent::AutoTuneHistoryLoaded(runs));
+                            Ok(())
+                        }
+                        Err(e) => {
+                            let _ = tx.send(DataEvent::ConnectionError(
+                                "auto_tune_history".into(),
+                                e.to_string(),
+                            ));
+                            Err(())
+                        }
+                    }
+                }
+                AppCommand::FetchPostMortemHistory => {
+                    match quickscope::storage::journal::get_recent_post_mortems(&db_pool, 5).await {
+                        Ok(mortems) => {
+                            let _ = tx.send(DataEvent::PostMortemHistoryLoaded(mortems));
+                            Ok(())
+                        }
+                        Err(e) => {
+                            let _ = tx.send(DataEvent::ConnectionError(
+                                "post_mortem_history".into(),
+                                e.to_string(),
+                            ));
                             Err(())
                         }
                     }
                 }
 
-                AppCommand::PaperSell { position_id, sell_percent } => {
+                // ── Trade commands ───────────────────────────────
+                AppCommand::PaperBuy {
+                    token_address,
+                    amount_sol,
+                    mode: _,
+                    tp_percent,
+                    sl_percent,
+                } => {
+                    let mut eng = engine.lock().await;
+                    // Need token detail for trade — fetch it
+                    match orch.fetch_token_detail(&token_address).await {
+                        Ok(detail) => {
+                            let config = quickscope::storage::config::load_alpha_config(&db_pool)
+                                .await
+                                .unwrap_or_default();
+                            let report = quickscope::alpha::analyze_token(&detail, &config);
+                            let (_tp, _sl) = (
+                                tp_percent.unwrap_or_else(|| {
+                                    quickscope::alpha::exit_params_for_mode(&report.mode).0
+                                }),
+                                sl_percent.unwrap_or_else(|| {
+                                    quickscope::alpha::exit_params_for_mode(&report.mode).1
+                                }),
+                            );
+                            match eng
+                                .paper_buy(
+                                    &detail,
+                                    &config,
+                                    amount_sol,
+                                    detail.token.price_usd,
+                                    150.0,
+                                )
+                                .await
+                            {
+                                Ok(result) => {
+                                    let _ = tx.send(DataEvent::ConnectionError(
+                                        "trade".into(),
+                                        format!(
+                                            "Paper buy executed: {} SOL → {} tokens at ${:.6}",
+                                            amount_sol,
+                                            result.tokens_received,
+                                            result.effective_price
+                                        ),
+                                    ));
+                                    Ok(())
+                                }
+                                Err(e) => {
+                                    let _ = tx.send(DataEvent::ConnectionError(
+                                        "paper_buy".into(),
+                                        e.to_string(),
+                                    ));
+                                    Err(())
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            let _ = tx.send(DataEvent::ConnectionError(
+                                "paper_buy".into(),
+                                e.to_string(),
+                            ));
+                            Err(())
+                        }
+                    }
+                }
+
+                AppCommand::PaperSell {
+                    position_id,
+                    sell_percent,
+                } => {
                     let mut eng = engine.lock().await;
                     match eng.paper_sell(&position_id, 0.0, sell_percent).await {
                         Ok(result) => {
-                            let _ = tx.send(DataEvent::ConnectionError("trade".into(),
-                                format!("Paper sell executed: {:.2}% → PnL {:.4} SOL ({:+.2}%)",
-                                    sell_percent, result.pnl_sol, result.pnl_percent)));
+                            let _ = tx.send(DataEvent::ConnectionError(
+                                "trade".into(),
+                                format!(
+                                    "Paper sell executed: {:.2}% → PnL {:.4} SOL ({:+.2}%)",
+                                    sell_percent, result.pnl_sol, result.pnl_percent
+                                ),
+                            ));
                             Ok(())
                         }
                         Err(e) => {
-                            let _ = tx.send(DataEvent::ConnectionError("paper_sell".into(), e.to_string()));
+                            let _ = tx.send(DataEvent::ConnectionError(
+                                "paper_sell".into(),
+                                e.to_string(),
+                            ));
                             Err(())
                         }
                     }
@@ -256,15 +380,23 @@ async fn dispatch_commands(
                             let mut eng = engine.lock().await;
                             for pos in &positions {
                                 if let Err(e) = eng.paper_sell(&pos.id, 0.0, 100.0).await {
-                                    let _ = tx.send(DataEvent::ConnectionError("emergency_exit".into(), e.to_string()));
+                                    let _ = tx.send(DataEvent::ConnectionError(
+                                        "emergency_exit".into(),
+                                        e.to_string(),
+                                    ));
                                 }
                             }
-                            let _ = tx.send(DataEvent::ConnectionError("trade".into(),
-                                format!("Emergency exit: {} positions closed", positions.len())));
+                            let _ = tx.send(DataEvent::ConnectionError(
+                                "trade".into(),
+                                format!("Emergency exit: {} positions closed", positions.len()),
+                            ));
                             Ok(())
                         }
                         Err(e) => {
-                            let _ = tx.send(DataEvent::ConnectionError("emergency_exit".into(), e.to_string()));
+                            let _ = tx.send(DataEvent::ConnectionError(
+                                "emergency_exit".into(),
+                                e.to_string(),
+                            ));
                             Err(())
                         }
                     }
@@ -273,30 +405,55 @@ async fn dispatch_commands(
                 // ── Watchlist ────────────────────────────────────
                 AppCommand::AddToWatchlist(addr) => {
                     let symbol = addr.chars().take(8).collect::<String>();
-                    match quickscope::storage::journal::add_to_watchlist(&db_pool, &addr, &symbol).await {
+                    match quickscope::storage::journal::add_to_watchlist(&db_pool, &addr, &symbol)
+                        .await
+                    {
                         Ok(_) => {
-                            let _ = tx.send(DataEvent::ConnectionError("watchlist".into(), format!("Added {} to watchlist", symbol)));
+                            let _ = tx.send(DataEvent::ConnectionError(
+                                "watchlist".into(),
+                                format!("Added {} to watchlist", symbol),
+                            ));
                             Ok(())
                         }
                         Err(e) => {
-                            let _ = tx.send(DataEvent::ConnectionError("watchlist".into(), e.to_string()));
+                            let _ = tx.send(DataEvent::ConnectionError(
+                                "watchlist".into(),
+                                e.to_string(),
+                            ));
                             Err(())
                         }
                     }
                 }
                 AppCommand::RemoveFromWatchlist(addr) => {
-                    match quickscope::storage::journal::remove_from_watchlist(&db_pool, &addr).await {
+                    match quickscope::storage::journal::remove_from_watchlist(&db_pool, &addr).await
+                    {
                         Ok(_) => Ok(()),
-                        Err(e) => { let _ = tx.send(DataEvent::ConnectionError("watchlist".into(), e.to_string())); Err(()) }
+                        Err(e) => {
+                            let _ = tx.send(DataEvent::ConnectionError(
+                                "watchlist".into(),
+                                e.to_string(),
+                            ));
+                            Err(())
+                        }
                     }
                 }
 
                 // ── Risk ─────────────────────────────────────────
                 AppCommand::ToggleKillSwitch => {
-                    let active = quickscope::storage::journal::get_today_risk(&db_pool, "today").await.ok().flatten()
-                        .map(|r| !r.kill_switch_active_bool()).unwrap_or(true);
-                    let _ = tx.send(DataEvent::ConnectionError("risk".into(),
-                        if active { "Kill switch ACTIVATED".into() } else { "Kill switch DEACTIVATED".into() }));
+                    let active = quickscope::storage::journal::get_today_risk(&db_pool, "today")
+                        .await
+                        .ok()
+                        .flatten()
+                        .map(|r| !r.kill_switch_active_bool())
+                        .unwrap_or(true);
+                    let _ = tx.send(DataEvent::ConnectionError(
+                        "risk".into(),
+                        if active {
+                            "Kill switch ACTIVATED".into()
+                        } else {
+                            "Kill switch DEACTIVATED".into()
+                        },
+                    ));
                     Ok(())
                 }
 
@@ -306,13 +463,20 @@ async fn dispatch_commands(
                         model: "stub".to_string(),
                         response: "Post-mortem analysis:\n- Good trades: 0\n- Bad trades: 0\n- Suggestions: Set up an LLM API key for real analysis.".to_string(),
                     };
-                    match quickscope::learning::journal::run_post_mortem(&db_pool, &provider, &start, &end).await {
+                    match quickscope::learning::journal::run_post_mortem(
+                        &db_pool, &provider, &start, &end,
+                    )
+                    .await
+                    {
                         Ok(resp) => {
                             let _ = tx.send(DataEvent::ConnectionError("post_mortem".into(), resp));
                             Ok(())
                         }
                         Err(e) => {
-                            let _ = tx.send(DataEvent::ConnectionError("post_mortem".into(), e.to_string()));
+                            let _ = tx.send(DataEvent::ConnectionError(
+                                "post_mortem".into(),
+                                e.to_string(),
+                            ));
                             Err(())
                         }
                     }
@@ -320,18 +484,29 @@ async fn dispatch_commands(
                 AppCommand::RunAutoTune => {
                     match quickscope::learning::tuner::run_auto_tune(&db_pool).await {
                         Ok(Some(result)) => {
-                            let _ = tx.send(DataEvent::ConnectionError("auto_tune".into(),
-                                format!("Auto-tune complete: {}W/{}L, {} discriminations",
-                                    result.wins, result.losses, result.discriminations.len())));
+                            let _ = tx.send(DataEvent::ConnectionError(
+                                "auto_tune".into(),
+                                format!(
+                                    "Auto-tune complete: {}W/{}L, {} discriminations",
+                                    result.wins,
+                                    result.losses,
+                                    result.discriminations.len()
+                                ),
+                            ));
                             Ok(())
                         }
                         Ok(None) => {
-                            let _ = tx.send(DataEvent::ConnectionError("auto_tune".into(),
-                                "Auto-tune skipped: need 10+ wins AND 10+ losses".into()));
+                            let _ = tx.send(DataEvent::ConnectionError(
+                                "auto_tune".into(),
+                                "Auto-tune skipped: need 10+ wins AND 10+ losses".into(),
+                            ));
                             Ok(())
                         }
                         Err(e) => {
-                            let _ = tx.send(DataEvent::ConnectionError("auto_tune".into(), e.to_string()));
+                            let _ = tx.send(DataEvent::ConnectionError(
+                                "auto_tune".into(),
+                                e.to_string(),
+                            ));
                             Err(())
                         }
                     }
@@ -339,11 +514,15 @@ async fn dispatch_commands(
                 AppCommand::SaveAlphaConfig(config) => {
                     match quickscope::storage::config::save_alpha_config(&db_pool, &config).await {
                         Ok(_) => {
-                            let _ = tx.send(DataEvent::ConnectionError("config".into(), "Alpha config saved".into()));
+                            let _ = tx.send(DataEvent::ConnectionError(
+                                "config".into(),
+                                "Alpha config saved".into(),
+                            ));
                             Ok(())
                         }
                         Err(e) => {
-                            let _ = tx.send(DataEvent::ConnectionError("config".into(), e.to_string()));
+                            let _ =
+                                tx.send(DataEvent::ConnectionError("config".into(), e.to_string()));
                             Err(())
                         }
                     }
