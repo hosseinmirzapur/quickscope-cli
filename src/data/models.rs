@@ -656,6 +656,8 @@ pub enum DataEvent {
     PriceUpdated(String, f64),
     TrenchesUpdated(Vec<TrenchToken>),
     WatchlistUpdated(Vec<TrendingToken>),
+    AutoTuneHistoryLoaded(Vec<crate::storage::journal::TuningHistoryRow>),
+    PostMortemHistoryLoaded(Vec<crate::storage::journal::PostMortemRow>),
 }
 
 // ── App Event (crossterm → update loop) ─────────────────────────
@@ -701,6 +703,9 @@ pub enum AppCommand {
     FetchSmartMoney,
     FetchSignals,
     FetchTrenches(String),
+    /// Load strategy data from DB
+    FetchAutoTuneHistory,
+    FetchPostMortemHistory,
 }
 
 // ── Tab Index ──────────────────────────────────────────────────
@@ -765,4 +770,6 @@ pub enum ThemePreset {
     #[default]
     Dark,
     Degen,
+    Terminal,
+    Cyberpunk,
 }
