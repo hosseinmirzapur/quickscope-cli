@@ -142,7 +142,7 @@ pub async fn get_watchlist(pool: &SqlitePool) -> Result<Vec<WatchlistRow>> {
     Ok(rows)
 }
 
-#[derive(Debug, Clone, sqlx::FromRow)]
+#[derive(Debug, Clone, sqlx::FromRow, serde::Serialize, serde::Deserialize)]
 pub struct WatchlistRow {
     pub id: i64,
     pub token_address: String,
@@ -199,7 +199,7 @@ pub async fn get_recent_tuning_runs(
     Ok(rows)
 }
 
-#[derive(Debug, Clone, sqlx::FromRow)]
+#[derive(Debug, Clone, sqlx::FromRow, serde::Serialize, serde::Deserialize)]
 pub struct TuningHistoryRow {
     pub id: i64,
     pub tuned_at: String,
@@ -254,7 +254,7 @@ pub async fn get_recent_post_mortems(pool: &SqlitePool, limit: i64) -> Result<Ve
     Ok(rows)
 }
 
-#[derive(Debug, Clone, sqlx::FromRow)]
+#[derive(Debug, Clone, sqlx::FromRow, serde::Serialize, serde::Deserialize)]
 pub struct PostMortemRow {
     pub id: i64,
     pub run_at: String,

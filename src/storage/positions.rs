@@ -52,7 +52,7 @@ pub async fn insert_position(
 }
 
 /// A flat row returned from the positions table.
-#[derive(Debug, Clone, sqlx::FromRow)]
+#[derive(Debug, Clone, sqlx::FromRow, serde::Serialize, serde::Deserialize)]
 pub struct PositionRow {
     pub id: String,
     pub token_address: String,

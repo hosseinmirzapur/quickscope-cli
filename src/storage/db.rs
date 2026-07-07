@@ -5,6 +5,7 @@ use sqlx::SqlitePool;
 use super::migrations::SCHEMA;
 
 /// Manages the SQLite connection pool and schema initialization.
+#[derive(Clone)]
 pub struct DbManager {
     pub pool: SqlitePool,
 }

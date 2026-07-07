@@ -643,7 +643,7 @@ impl Default for Portfolio {
 
 // ── Data Event (async → UI thread) ───────────────────────────
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub enum DataEvent {
     TrendingUpdated(Vec<TrendingToken>),
     TokenLoaded(Box<TokenDetail>),
