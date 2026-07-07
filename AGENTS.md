@@ -7,10 +7,12 @@
 
 ## What is QuickScope?
 
-QuickScope is a **Rust-based terminal user interface (TUI)** for memecoin alpha hunting and **paper trading** on Solana. It is built around the `memecoin-alpha-agent` skill — alpha-selection filtering, momentum-explosion detection, rug detection, risk discipline, and continuous learning.
+QuickScope is a **Rust-based terminal user interface (TUI) + Web UI** for memecoin alpha hunting and **paper trading** on Solana. It is built around the `memecoin-alpha-agent` skill — alpha-selection filtering, momentum-explosion detection, rug detection, risk discipline, and continuous learning.
 
 - **Language:** Rust (edition 2021)
-- **Architecture:** Monolithic single-crate with feature modules (see `docs/architecture.md`)
+- **Architecture:** Monolithic single-crate with feature modules + shared `AppCore` (see `docs/architecture.md`)
+- **Web server:** Axum-based REST API + WebSocket, served via `--web` flag
+- **Web frontend:** Leptos SPA (separate `web-frontend/` crate)
 - **Trading mode:** Paper trading only (v1). No real-money transactions.
 - **Chain:** Solana only.
 - **Inspiration:** OpenCode TUI — multi-panel, tabbed, keyboard + mouse, themeable.
@@ -40,6 +42,9 @@ QuickScope is a **Rust-based terminal user interface (TUI)** for memecoin alpha 
 | Theme system (Dark / Terminal / Degen / Cyberpunk) | ✅ Complete |
 | Error handling (fatal error modals for missing API keys) | ✅ Complete |
 | Alph AI WebSocket reconnect with exponential backoff | ✅ Complete |
+| Shared AppCore (extracted business logic) | ✅ Complete |
+| Web server (Axum REST + WebSocket) | ✅ Complete |
+| Leptos frontend (7 tabs, paper trading) | ✅ Complete |
 | Integration, polish, docs | ✅ Complete — 105 tests, all docs updated |
 
 ---
@@ -76,14 +81,26 @@ GMGN does NOT support IPv6. If `gmgn` calls fail with 401/403, check IPv6 first.
 
 ```
 src/
-├── main.rs              # Entry point, TUI event loop
+├── main.rs              # Entry point, TUI event loop OR web server
+├── core.rs              # AppCore — shared business logic (used by TUI + web)
 ├── app/                 # AppState, TokenListMode, input router
 ├── ui/                  # ratatui rendering: sidebar + 7 tabs + 15 widgets + theme + format
 ├── data/                # DataOrchestrator + GMGN + Alph AI + DEX Screener clients
 ├── alpha/               # Alpha Filter: scoring, rug detection, narrative, modes
 ├── trade/               # Paper trade engine: simulator, position, monitor, risk
 ├── learning/            # Auto-tuner + LLM post-mortem (OpenAI/Anthropic/Ollama)
-└── storage/             # SQLite via sqlx: positions, journal, config, cache
+├── storage/             # SQLite via sqlx: positions, journal, config, cache
+└── web/                 # Axum REST API + WebSocket server (mod.rs, handlers.rs, ws.rs, state.rs)
+
+web-frontend/            # Leptos SPA (separate crate)
+├── index.html           # Trunk entry point
+├── Cargo.toml           # Leptos + wasm dependencies
+└── src/
+    ├── main.rs          # App mount
+    ├── lib.rs           # Router + App component
+    ├── api.rs           # HTTP client for backend API
+    ├── components/      # Shared UI components (nav)
+    └── pages/           # 7 page components (Dashboard, Scanner, Analyzer, Trade, Journal, Strategy, Settings)
 ```
 
 Detailed responsibilities: see `docs/architecture.md`.
@@ -162,11 +179,17 @@ Four themes are available, cycled via `Ctrl+P` → Cycle Theme:
 ## Development Commands
 
 ```bash
-# Build
+# Build (main crate only)
 cargo build
 
-# Run the TUI
+# Run the TUI (default)
 cargo run
+
+# Run the web server (--web flag)
+cargo run -- --web
+
+# Run web server on custom port/host
+cargo run -- --web --port 8080 --host 0.0.0.0
 
 # Run all tests (105 total)
 cargo test
@@ -182,6 +205,9 @@ cargo clippy -- -D warnings
 
 # Run a specific test
 cargo test scoring::tests
+
+# Build the web frontend (requires wasm32 target + trunk)
+# cd web-frontend && trunk build --release
 ```
 
 ---
@@ -204,6 +230,58 @@ Copy `.env.example` and fill in values. Missing API keys will trigger a fatal er
 
 ---
 
+## Web Mode
+
+QuickScope can run as a web server instead of the TUI. Start it with:
+
+```bash
+cargo run -- --web
+```
+
+This starts:
+1. **Axum REST API** on `http://127.0.0.1:3000` — serves data to the frontend
+2. **WebSocket** at `ws://127.0.0.1:3000/ws` — pushes real-time updates
+3. **Static file serving** for the Leptos frontend (once built)
+
+### API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/tokens/trending` | Trending tokens from GMGN |
+| `GET` | `/api/tokens/trenches` | Newly launched tokens |
+| `GET` | `/api/tokens/watchlist` | Watchlisted tokens |
+| `GET` | `/api/tokens/analyze/{address}` | Token detail + alpha report |
+| `GET` | `/api/positions` | Open paper trading positions |
+| `POST` | `/api/trade/buy` | Execute paper buy |
+| `POST` | `/api/trade/sell` | Execute paper sell |
+| `GET` | `/api/journal` | Closed trade history |
+| `GET` / `PUT` | `/api/strategy` | Alpha config |
+| `GET` / `PUT` | `/api/settings` | App settings |
+| `WS` | `/ws` | Real-time data stream |
+
+See `docs/web-api.md` for full specification.
+
+### Security
+
+- API keys are loaded from `.env` and stored **server-side only** — never sent to the browser.
+- CORS is permissive (localhost only by default). Restrict in production.
+- The web server runs on localhost by default. Use `--host 0.0.0.0` for remote access (not recommended without authentication).
+
+### Web Frontend
+
+The Leptos SPA is in `web-frontend/`. To build it:
+
+```bash
+rustup target add wasm32-unknown-unknown
+cargo install trunk
+cd web-frontend
+trunk build --release
+```
+
+The built files go to `web-frontend/dist/`. The Axum server can serve them (not yet implemented — serve via nginx or `trunk serve` for development).
+
+---
+
 ## Doc Directory Index
 
 | Doc | Purpose |
@@ -216,6 +294,7 @@ Copy `.env.example` and fill in values. Missing API keys will trigger a fatal er
 | `docs/api-reference/gmgn-endpoints.md` | Every GMGN endpoint used, with weights |
 | `docs/api-reference/alph-ai-endpoints.md` | Every Alph AI endpoint used |
 | `docs/api-reference/dex-screener.md` | DEX Screener endpoints |
+| `docs/web-api.md` | Web server REST API + WebSocket specification |
 | `docs/plans/` | Implementation plans (one per phase) |
 
 ---
