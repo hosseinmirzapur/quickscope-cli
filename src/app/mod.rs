@@ -1,7 +1,7 @@
 //! App core — state management, event handling, input dispatch.
 
-pub mod state;
 pub mod input;
+pub mod state;
 
 pub use state::AppState;
 
@@ -73,18 +73,38 @@ fn handle_data_event(state: &mut AppState, event: DataEvent) -> Vec<AppCommand> 
             ));
         }
         DataEvent::ConnectionError(endpoint, error) => {
-            state.set_status(&format!("Connection error: {} — {}", endpoint, error));
+            // Show errors visibly to the user — prefix with severity
+            if error.contains("Connected") || error.contains("Loaded") || error.contains("complete")
+            {
+                state.notify(&format!("✓ {}", error));
+            } else if endpoint == "alph_ai_ws" {
+                // WebSocket status updates (info-level, don't spam)
+                state.set_status(&error);
+            } else {
+                state.set_status(&format!("{}: {}", endpoint, error));
+                state.notify(&format!("⚠ {}", error));
+            }
         }
         DataEvent::PriceUpdated(_addr, price) => {
             // Update PnL for positions holding this token
             state.set_status(&format!("Price updated: ${:.6}", price));
         }
         DataEvent::TrenchesUpdated(tokens) => {
+            let count = tokens.len();
             state.trenches = tokens;
+            state.set_status(&format!("Loaded {} trenches", count));
         }
         DataEvent::WatchlistUpdated(tokens) => {
             state.trending = tokens; // For now, just replace trending with watchlist
             state.set_status("Watchlist loaded");
+        }
+        DataEvent::AutoTuneHistoryLoaded(runs) => {
+            state.tuning_history = runs;
+            state.set_status("Auto-tune history loaded");
+        }
+        DataEvent::PostMortemHistoryLoaded(mortems) => {
+            state.post_mortems = mortems;
+            state.set_status("Post-mortem history loaded");
         }
     }
     vec![]
@@ -112,12 +132,13 @@ mod tests {
     #[test]
     fn test_quit_on_q() {
         let mut state = AppState::new();
-        let cmds = update(&mut state, AppEvent::Key(
-            crossterm::event::KeyEvent::new(
+        let cmds = update(
+            &mut state,
+            AppEvent::Key(crossterm::event::KeyEvent::new(
                 crossterm::event::KeyCode::Char('q'),
                 crossterm::event::KeyModifiers::NONE,
-            )
-        ));
+            )),
+        );
         assert!(!state.running);
         assert!(cmds.is_empty());
     }

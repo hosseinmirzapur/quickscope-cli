@@ -1,6 +1,16 @@
-use std::collections::HashMap;
 use crate::data::models::*;
 use crate::storage::journal::WatchlistRow;
+use std::collections::HashMap;
+
+/// Token list display mode for the Scanner tab.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum TokenListMode {
+    #[default]
+    Trending,
+    Trenches,
+    Watchlist,
+    AiRec,
+}
 
 /// Central application state — holds everything the UI needs to render.
 pub struct AppState {
@@ -29,6 +39,8 @@ pub struct AppState {
     pub alpha_config: AlphaConfig,
     pub risk_state: RiskState,
     pub kline_cache: HashMap<String, Vec<KlineCandle>>,
+    pub tuning_history: Vec<crate::storage::journal::TuningHistoryRow>,
+    pub post_mortems: Vec<crate::storage::journal::PostMortemRow>,
 
     // Selected / focused items
     pub selected_token: Option<TokenDetail>,
@@ -54,9 +66,12 @@ pub struct AppState {
     // Input state
     pub input_buffer: String,
     pub input_active: bool,
+    pub address_search_mode: bool,
     pub scroll_offset: usize,
     pub list_cursor: usize,
-    
+    pub show_filter: bool,
+    pub list_mode: TokenListMode,
+
     // Loading state per data source
     pub loading_trending: bool,
     pub loading_token_detail: bool,
@@ -81,6 +96,8 @@ impl AppState {
             alpha_config: AlphaConfig::default(),
             risk_state: RiskState::default(),
             kline_cache: HashMap::new(),
+            tuning_history: Vec::new(),
+            post_mortems: Vec::new(),
             selected_token: None,
             selected_position_id: None,
             alpha_report: None,
@@ -98,8 +115,11 @@ impl AppState {
             status_message: "Ready — press ? for help".to_string(),
             input_buffer: String::new(),
             input_active: false,
+            address_search_mode: false,
             scroll_offset: 0,
             list_cursor: 0,
+            show_filter: false,
+            list_mode: TokenListMode::default(),
             loading_trending: false,
             loading_token_detail: false,
         }
@@ -166,13 +186,50 @@ impl AppState {
         self.show_modal = false;
     }
 
+    /// Show a fatal error modal with title and message.
+    /// These are critical errors that need user attention (API keys, DB corruption, etc.)
+    pub fn show_fatal_error(&mut self, title: &str, message: &str) {
+        self.show_modal = true;
+        self.modal_message = format!("{}\n\n{}", title, message);
+    }
+
+    /// Check for missing API keys and show warnings if critical ones are absent.
+    /// Returns true if any critical keys are missing.
+    pub fn check_api_keys(&mut self) -> bool {
+        let mut missing = Vec::new();
+        if std::env::var("GMGN_API_KEY").is_err() {
+            missing.push("GMGN_API_KEY");
+        }
+        if std::env::var("ALPH_DEX_COOKIE").is_err() {
+            missing.push("ALPH_DEX_COOKIE");
+        }
+
+        if !missing.is_empty() {
+            self.show_fatal_error(
+                "⚠️  Missing API Keys",
+                &format!(
+                    "The following required keys are not set in ~/.config/quickscope/.env:\n\n{}\n\n\
+                     Without these, data fetching will be limited.\n\n\
+                     Copy .env.example and fill in your values.",
+                    missing.iter().map(|k| format!("  • {}", k)).collect::<Vec<_>>().join("\n")
+                ),
+            );
+            true
+        } else {
+            false
+        }
+    }
+
     /// Return trending tokens filtered by the current search input buffer.
     /// If no search is active, returns the full list.
     pub fn filtered_trending(&self) -> Vec<&TrendingToken> {
         if self.input_active && !self.input_buffer.is_empty() {
             let q = self.input_buffer.to_lowercase();
-            self.trending.iter()
-                .filter(|t| t.symbol.to_lowercase().contains(&q) || t.name.to_lowercase().contains(&q))
+            self.trending
+                .iter()
+                .filter(|t| {
+                    t.symbol.to_lowercase().contains(&q) || t.name.to_lowercase().contains(&q)
+                })
                 .collect()
         } else {
             self.trending.iter().collect()
@@ -195,7 +252,69 @@ impl AppState {
 
     /// Get the current sidebar width based on collapsed state.
     pub fn sidebar_width(&self) -> u16 {
-        if self.sidebar_collapsed { 3 } else { 16 }
+        if self.sidebar_collapsed {
+            3
+        } else {
+            16
+        }
+    }
+
+    /// Return the current token list based on list_mode.
+    pub fn current_list(&self) -> Vec<&TrendingToken> {
+        match self.list_mode {
+            TokenListMode::Watchlist => {
+                let watchlisted: std::collections::HashSet<String> = self
+                    .watchlist
+                    .iter()
+                    .map(|w| w.token_address.clone())
+                    .collect();
+                self.trending
+                    .iter()
+                    .filter(|t| watchlisted.contains(&t.address))
+                    .collect()
+            }
+            TokenListMode::AiRec => {
+                let gold_silver: std::collections::HashSet<String> = self
+                    .signals
+                    .iter()
+                    .filter(|s| {
+                        matches!(
+                            s.confidence,
+                            SignalConfidence::Gold | SignalConfidence::Silver
+                        )
+                    })
+                    .map(|s| s.token_address.clone())
+                    .collect();
+                self.trending
+                    .iter()
+                    .filter(|t| gold_silver.contains(&t.address))
+                    .collect()
+            }
+            _ => {
+                if self.input_active && !self.input_buffer.is_empty() {
+                    let q = self.input_buffer.to_lowercase();
+                    self.trending
+                        .iter()
+                        .filter(|t| {
+                            t.symbol.to_lowercase().contains(&q)
+                                || t.name.to_lowercase().contains(&q)
+                        })
+                        .collect()
+                } else {
+                    self.trending.iter().collect()
+                }
+            }
+        }
+    }
+
+    /// Label for the current list mode.
+    pub fn list_mode_label(&self) -> &'static str {
+        match self.list_mode {
+            TokenListMode::Trending => "Trending",
+            TokenListMode::Trenches => "Trenches",
+            TokenListMode::Watchlist => "Watchlist",
+            TokenListMode::AiRec => "AI-Rec",
+        }
     }
 }
 

@@ -1,6 +1,7 @@
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind};
-use crate::data::models::*;
 use super::state::AppState;
+use crate::app::state::TokenListMode;
+use crate::data::models::*;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind};
 
 /// Translate crossterm key events into AppEvents and dispatch to the state.
 /// Returns a list of AppCommands to execute (side effects).
@@ -10,13 +11,14 @@ pub fn handle_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
         return handle_palette_key(key, state);
     }
 
-    // Ctrl+C → quit
+    // Ctrl+C → quit (with confirm if open positions)
     if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
         if state.open_positions.is_empty() {
             state.running = false;
         } else {
             state.show_modal = true;
-            state.modal_message = "Quit with open positions?\n\nPress ENTER to quit, ESC to cancel.".to_string();
+            state.modal_message =
+                "Quit with open positions?\n\nPress ENTER to quit, ESC to cancel.".to_string();
         }
         return vec![];
     }
@@ -33,6 +35,18 @@ pub fn handle_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
         return vec![];
     }
 
+    // Ctrl+E → emergency exit all
+    if key.code == KeyCode::Char('e') && key.modifiers.contains(KeyModifiers::CONTROL) {
+        if state.show_modal && state.modal_message.contains("Emergency Exit") {
+            state.dismiss_modal();
+            return vec![AppCommand::EmergencyExitAll];
+        } else {
+            state.show_modal = true;
+            state.modal_message = "Emergency Exit All\n\nClose ALL open positions at market price?\n\nPress ENTER to confirm, ESC to cancel.".to_string();
+        }
+        return vec![];
+    }
+
     // ? → help (modal)
     if key.code == KeyCode::Char('?') {
         if state.show_modal {
@@ -42,19 +56,21 @@ pub fn handle_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
             state.modal_message = format!(
                 "QuickScope Help — {} Tab\n\n\
                  Keyboard shortcuts:\n\
-                 ↑/↓: Navigate lists\n\
+                 Arrow Up/Down: Navigate lists\n\
+                 Arrow Left/Right: Switch tabs\n\
                  Enter: Select / View detail\n\
-                 b: Paper Buy | s: Paper Sell\n\
-                 w: Watchlist toggle\n\
+                 Tab / Shift+Tab: Next/Prev tab\n\
+                 b: Paper Buy (Trade tab)\n\
+                 s: Paper Sell (Trade tab)\n\
                  r: Refresh data\n\
+                 f: Filter tokens\n\
                  /: Search / Filter\n\
-                 Space: Star / Watch\n\
+                 Space: Watchlist toggle\n\
                  Esc: Close modal / Back\n\
-                 Tab: Next tab | Shift+Tab: Prev tab\n\
                  Ctrl+P: Command palette\n\
                  Ctrl+B: Toggle sidebar\n\
                  Ctrl+E: Emergency exit all\n\
-                 q or Ctrl+C: Quit\n\
+                 Ctrl+C: Quit\n\
                  ?: This help",
                 state.active_tab.label()
             );
@@ -62,7 +78,7 @@ pub fn handle_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
         return vec![];
     }
 
-    // Tab / Shift+Tab
+    // Tab / Shift+Tab → cycle tabs
     if key.code == KeyCode::Tab {
         if key.modifiers.contains(KeyModifiers::SHIFT) {
             state.switch_tab(state.active_tab.prev());
@@ -76,8 +92,6 @@ pub fn handle_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
     if key.code == KeyCode::Esc {
         if state.show_modal {
             state.dismiss_modal();
-        } else if state.show_command_palette {
-            state.show_command_palette = false;
         } else if state.input_active {
             state.input_active = false;
             state.input_buffer.clear();
@@ -99,6 +113,15 @@ pub fn handle_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
             }
             KeyCode::Enter => {
                 state.input_active = false;
+                let input = state.input_buffer.clone();
+                state.input_buffer.clear();
+                if state.address_search_mode {
+                    state.address_search_mode = false;
+                    // Look up the address
+                    state.set_status(&format!("Looking up {}...", input));
+                    state.loading_token_detail = true;
+                    return vec![AppCommand::FetchTokenDetail(input)];
+                }
                 return match state.active_tab {
                     TabIndex::Scanner | TabIndex::Dashboard => {
                         vec![AppCommand::FetchTrending]
@@ -128,22 +151,60 @@ pub fn handle_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
         return vec![];
     }
 
-    // h/l or ←/→ → panel focus (future use)
-    if key.code == KeyCode::Char('h') || key.code == KeyCode::Left {
-        state.set_status("← panel left");
-        return vec![];
-    }
-    if key.code == KeyCode::Char('l') || key.code == KeyCode::Right {
-        state.set_status("→ panel right");
-        return vec![];
-    }
-
-    // ↑/↓: navigate lists (no VIM j/k)
+    // Arrow keys — navigation (NO VIM j/k/h/l)
     match key.code {
         KeyCode::Up => state.move_cursor(-1),
         KeyCode::Down => state.move_cursor(1),
+        KeyCode::Left => {
+            if state.active_tab == TabIndex::Scanner {
+                // Switch list mode within Scanner
+                state.list_mode = match state.list_mode {
+                    TokenListMode::Trending => TokenListMode::AiRec,
+                    TokenListMode::Trenches => TokenListMode::Trending,
+                    TokenListMode::Watchlist => TokenListMode::Trenches,
+                    TokenListMode::AiRec => TokenListMode::Watchlist,
+                };
+                state.list_cursor = 0;
+                state.scroll_offset = 0;
+                // Fetch trenches if switching to that mode and empty
+                if state.list_mode == TokenListMode::Trenches && state.trenches.is_empty() {
+                    return vec![AppCommand::FetchTrenches("new_creation".to_string())];
+                }
+            } else {
+                state.switch_tab(state.active_tab.prev());
+            }
+            return vec![];
+        }
+        KeyCode::Right => {
+            if state.active_tab == TabIndex::Scanner {
+                // Switch list mode within Scanner
+                state.list_mode = match state.list_mode {
+                    TokenListMode::Trending => TokenListMode::Trenches,
+                    TokenListMode::Trenches => TokenListMode::Watchlist,
+                    TokenListMode::Watchlist => TokenListMode::AiRec,
+                    TokenListMode::AiRec => TokenListMode::Trending,
+                };
+                state.list_cursor = 0;
+                state.scroll_offset = 0;
+                // Fetch trenches if switching to that mode and empty
+                if state.list_mode == TokenListMode::Trenches && state.trenches.is_empty() {
+                    return vec![AppCommand::FetchTrenches("new_creation".to_string())];
+                }
+            } else {
+                state.switch_tab(state.active_tab.next());
+            }
+            return vec![];
+        }
         KeyCode::PageUp => state.move_cursor(-10),
         KeyCode::PageDown => state.move_cursor(10),
+        KeyCode::Home => {
+            state.list_cursor = 0;
+            state.scroll_offset = 0;
+        }
+        KeyCode::End => {
+            let max = state.trending.len().saturating_sub(1);
+            state.list_cursor = max;
+        }
         _ => {}
     }
 
@@ -156,6 +217,17 @@ pub fn handle_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
             }
             if state.modal_message.contains("Quit with open") {
                 state.running = false;
+                return vec![];
+            }
+            // Filter modal handling
+            if state.modal_message.starts_with("Filter tokens") {
+                state.show_filter = !state.show_filter;
+                state.dismiss_modal();
+                return vec![];
+            }
+            // Sort modal handling
+            if state.modal_message.starts_with("Sort tokens") {
+                state.dismiss_modal();
                 return vec![];
             }
             state.dismiss_modal();
@@ -181,10 +253,14 @@ pub fn handle_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
         }
     }
 
-    // r → refresh
+    // r → refresh (context-sensitive)
     if key.code == KeyCode::Char('r') {
         state.set_status("Refreshing data...");
         state.loading_trending = true;
+        if state.active_tab == TabIndex::Scanner && state.list_mode == TokenListMode::Trenches {
+            // Fetch trenches instead of trending
+            return vec![AppCommand::FetchTrenches("new_creation".to_string())];
+        }
         return vec![AppCommand::FetchTrending];
     }
 
@@ -200,25 +276,21 @@ pub fn handle_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
         return vec![];
     }
 
-    // q → quit
+    // f → filter modal
+    if key.code == KeyCode::Char('f') {
+        state.show_modal = true;
+        state.modal_message = "Filter tokens\n\nToggle filters to narrow the token list.\nActive filters apply to all views.\n\nPress ENTER to apply, ESC to cancel.".to_string();
+        return vec![];
+    }
+
+    // q → quit (with confirm if open positions)
     if key.code == KeyCode::Char('q') {
         if state.open_positions.is_empty() {
             state.running = false;
         } else {
             state.show_modal = true;
-            state.modal_message = "Quit with open positions?\n\nPress ENTER to quit, ESC to cancel.".to_string();
-        }
-        return vec![];
-    }
-
-    // Ctrl+E: emergency exit all
-    if key.code == KeyCode::Char('e') && key.modifiers.contains(KeyModifiers::CONTROL) {
-        if state.show_modal && state.modal_message.contains("Emergency Exit") {
-            state.dismiss_modal();
-            return vec![AppCommand::EmergencyExitAll];
-        } else {
-            state.show_modal = true;
-            state.modal_message = "⚠️  Emergency Exit All\n\nClose ALL open positions at market price?\n\nPress ENTER to confirm, ESC to cancel.".to_string();
+            state.modal_message =
+                "Quit with open positions?\n\nPress ENTER to quit, ESC to cancel.".to_string();
         }
         return vec![];
     }
@@ -234,7 +306,8 @@ fn handle_palette_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
             vec![]
         }
         KeyCode::Enter => {
-            if let Some(cmd) = crate::ui::widgets::command_palette::execute_palette_selection(state) {
+            if let Some(cmd) = crate::ui::widgets::command_palette::execute_palette_selection(state)
+            {
                 vec![cmd]
             } else {
                 vec![]
@@ -264,29 +337,54 @@ fn handle_palette_key(key: KeyEvent, state: &mut AppState) -> Vec<AppCommand> {
 
 /// Handle mouse events — sidebar clicks, list selection, scroll.
 pub fn handle_mouse(mouse: MouseEvent, state: &mut AppState) -> Vec<AppCommand> {
+    // ── If modal or palette is open, ignore mouse clicks to prevent ghost clicks ──
+    if state.show_modal || state.show_command_palette {
+        return vec![];
+    }
+
     match mouse.kind {
         MouseEventKind::Down(_button) => {
             // Sidebar: row 0 is top bar, main area starts at row 1
             // Sidebar column is 0..sidebar_width
             let sb_w = state.sidebar_width();
             if mouse.column < sb_w && mouse.row >= 1 {
-                if let Some(tab) = crate::ui::sidebar::sidebar_tab_at(mouse.row, 
-                    ratatui::layout::Rect::new(0, 1, sb_w, 7)
+                if let Some(tab) = crate::ui::sidebar::sidebar_tab_at(
+                    mouse.row,
+                    ratatui::layout::Rect::new(0, 1, sb_w, 7),
                 ) {
                     state.switch_tab(tab);
                     return vec![];
                 }
             }
 
-            // Content list click
+            // Content list click — only on tabs that display token lists
             if mouse.row >= 2 && mouse.column >= sb_w {
-                let list_idx = (mouse.row - 2) as usize;
-                state.list_cursor = list_idx;
-                if let Some(token) = state.trending.get(list_idx) {
-                    let addr = token.address.clone();
-                    let symbol = token.symbol.clone();
-                    state.set_status(&format!("Loading {}...", symbol));
-                    return vec![AppCommand::FetchTokenDetail(addr)];
+                // Only process list selection for tabs that have a token list
+                match state.active_tab {
+                    TabIndex::Dashboard | TabIndex::Scanner | TabIndex::Analyzer => {
+                        let list_idx = (mouse.row - 2) as usize;
+                        state.list_cursor = list_idx;
+
+                        // Get the appropriate data source based on list_mode
+                        let tokens: Vec<&TrendingToken> = match state.list_mode {
+                            TokenListMode::Trenches => {
+                                // Trenches use TrenchToken, not TrendingToken
+                                return vec![];
+                            }
+                            _ => state.current_list(),
+                        };
+
+                        if let Some(token) = tokens.get(list_idx) {
+                            let addr = token.address.clone();
+                            let symbol = token.symbol.clone();
+                            state.set_status(&format!("Loading {}...", symbol));
+                            return vec![AppCommand::FetchTokenDetail(addr)];
+                        }
+                    }
+                    _ => {
+                        // Other tabs (Trade, Journal, etc.) don't have token lists to click
+                        // Ignore the click
+                    }
                 }
             }
         }
