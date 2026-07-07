@@ -2,7 +2,7 @@
 
 # ⚡ QuickScope
 
-**Solana Memecoin Alpha Hunting TUI — Paper Trade, Analyze, Learn**
+**Solana Memecoin Alpha Hunting — TUI & Web — Paper Trade, Analyze, Learn**
 
 [![Rust](https://img.shields.io/badge/Rust-2021-edition?logo=rust&style=flat-square)]()
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)]()
@@ -10,10 +10,11 @@
 [![Status](https://img.shields.io/badge/status-alpha-yellow?style=flat-square)]()
 
 <img src="https://img.shields.io/badge/TUI-ratatui%20%7C%20crossterm-ff6b6b?style=flat-square" />
+<img src="https://img.shields.io/badge/Web-Axum%20%7C%20Leptos-00d4ff?style=flat-square" />
 <img src="https://img.shields.io/badge/Solana-memecoin-9945FF?logo=solana&style=flat-square" />
 <img src="https://img.shields.io/badge/GMGN%20%7C%20Alph%20AI%20%7C%20DEX%20Screener-powered-38d9a9?style=flat-square" />
 
-*A terminal-based application for discovering, analyzing, and paper trading memecoins on Solana. Real-time data, intelligent filtering, risk discipline, and a learning engine — all running in your terminal.*
+*A terminal + web application for discovering, analyzing, and paper trading memecoins on Solana. Real-time data, intelligent filtering, risk discipline, and a learning engine — running in your terminal or browser.*
 
 </div>
 
@@ -82,21 +83,30 @@
 </td>
 <td width="50%">
 
-### 🎨 Terminal UI
-- **7 tabs** with persistent **sidebar** (VS Code-style activity bar) + mouse click support
-- **Scanner mode selector**: switch between Trending │ Trenches │ Watchlist │ AI-Rec
-- **4 themes**: Dark (OpenCode), Terminal (Bloomberg), Degen (Neon), Cyberpunk (Pink/Cyan)
-- **Command palette** (`Ctrl+P`) — searchable, keyboard-navigable, dimmed backdrop
-- **Sweet-alert modals** — centered, dark panel, colored border, dimmed backdrop
-- **Mouse support**: sidebar clicks, list selection, scroll wheel
-- **Scroll-safe**: clamped offsets, no ghosting, proper overlay clearing
-- **Toast notifications** with auto-dismiss (4s)
-- **Marketcap/volume-first display** — abbreviated with color coding
-- **Collapsible sidebar** (`Ctrl+B`) for more content space
-- **Auto-refresh every 10s** for real-time feel
-- Arrow-key navigation with PageUp/PageDown/Home/End
-- Full keyboard shortcut system (`?` for help)
-- **No VIM-style bindings** — pure arrow key navigation
+	### 🎨 Terminal UI
+	- **7 tabs** with persistent **sidebar** (VS Code-style activity bar) + mouse click support
+	- **Scanner mode selector**: switch between Trending │ Trenches │ Watchlist │ AI-Rec
+	- **4 themes**: Dark (OpenCode), Terminal (Bloomberg), Degen (Neon), Cyberpunk (Pink/Cyan)
+	- **Command palette** (`Ctrl+P`) — searchable, keyboard-navigable, dimmed backdrop
+	- **Sweet-alert modals** — centered, dark panel, colored border, dimmed backdrop
+	- **Mouse support**: sidebar clicks, list selection, scroll wheel
+	- **Scroll-safe**: clamped offsets, no ghosting, proper overlay clearing
+	- **Toast notifications** with auto-dismiss (4s)
+	- **Marketcap/volume-first display** — abbreviated with color coding
+	- **Collapsible sidebar** (`Ctrl+B`) for more content space
+	- **Auto-refresh every 10s** for real-time feel
+	- Arrow-key navigation with PageUp/PageDown/Home/End
+	- Full keyboard shortcut system (`?` for help)
+	- **No VIM-style bindings** — pure arrow key navigation
+	
+	### 🌐 Web UI (v0.2)
+	- Axum REST API + WebSocket server (`--web` flag)
+	- Leptos SPA with 7 tabs (Dashboard, Scanner, Analyzer, Trade, Journal, Strategy, Settings)
+	- Same data sources, alpha filter, and paper trading engine as TUI
+	- Real-time updates via WebSocket broadcast
+	- API keys stay server-side — never exposed to browser
+	- Paper trading with buy/sell forms and position management
+	- Sidebar navigation, token tables, alpha report panels
 
 </td>
 </tr>
@@ -112,21 +122,24 @@
 - A **GMGN API key** (free tier available) — run `npm install -g gmgn-cli` then `gmgn-cli config --apply <KEY>`
 - A **dex_cookie** from [alph.ai](https://alph.ai) (optional, for enhanced data)
 
-### Installation
+	### Installation
 
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/quickscope
-cd quickscope
-
-# Configure your API keys
-cp .env.example .env
-# Edit .env with your keys
-$EDITOR .env
-
-# Run
-cargo run --release
-```
+	```bash
+	# Clone the repository
+	git clone https://github.com/yourusername/quickscope
+	cd quickscope
+	
+	# Configure your API keys
+	cp .env.example .env
+	# Edit .env with your keys
+	$EDITOR .env
+	
+	# Run TUI mode
+	cargo run --release
+	
+	# Or run web server mode (visit http://127.0.0.1:3000)
+	cargo run --release -- --web
+	```
 
 ### Configuration
 
@@ -169,19 +182,47 @@ QUICKSCOPE_LOG_LEVEL=info
 
 **No VIM-style bindings (`j`/`k`/`h`/`l`)** — all navigation uses arrow keys.
 
-### Tab Overview
-
-Tabs are accessible via the **persistent sidebar** (left edge) or keyboard shortcuts:
-
-| Tab | Sidebar Icon | Purpose |
-|---|---|---|
-| **Dashboard** | ⬡ | Portfolio snapshot + live trending list |
-| **Scanner** | ⌕ | Browse tokens with 4-view mode selector (Trending/Trenches/Watchlist/AI-Rec) |
-| **Analyzer** | ◎ | Deep-dive: kline, security, holders, smart money, Alpha Score |
-| **Trade** | ⟠ | Open/close paper positions, TP/SL, quick actions |
-| **Journal** | ☰ | Trade history, session stats, win rate, best/worst trade |
-| **Strategy** | ⚙ | Auto-tune weights, discrimination analysis, LLM post-mortem |
-| **Settings** | ◆ | API key status (live env check), risk profile, theme cycling |
+	### Tab Overview
+	
+	Tabs are accessible via the **persistent sidebar** (left edge) or keyboard shortcuts:
+	
+	| Tab | Sidebar Icon | Purpose |
+	|---|---|---|
+	| **Dashboard** | ⬡ | Portfolio snapshot + live trending list |
+	| **Scanner** | ⌕ | Browse tokens with 4-view mode selector (Trending/Trenches/Watchlist/AI-Rec) |
+	| **Analyzer** | ◎ | Deep-dive: kline, security, holders, smart money, Alpha Score |
+	| **Trade** | ⟠ | Open/close paper positions, TP/SL, quick actions |
+	| **Journal** | ☰ | Trade history, session stats, win rate, best/worst trade |
+	| **Strategy** | ⚙ | Auto-tune weights, discrimination analysis, LLM post-mortem |
+	| **Settings** | ◆ | API key status (live env check), risk profile, theme cycling |
+	
+	### Web Mode
+	
+	Run the web server alongside or instead of the TUI:
+	
+	```bash
+	# Start web server (REST API + WebSocket) on port 3000
+	cargo run -- --web
+	
+	# Custom port
+	cargo run -- --web --port 8080
+	
+	# Or via Makefile
+	make web
+	make web-port PORT=8080
+	```
+	
+	The web server serves:
+	- **REST API** at `http://127.0.0.1:3000/api/` — all data endpoints
+	- **WebSocket** at `ws://127.0.0.1:3000/ws` — real-time updates
+	- **Static files** from `web-frontend/dist/` (when built with `trunk`)
+	
+	For the Leptos frontend during development, use:
+	```bash
+	make frontend-serve
+	```
+	
+	This starts the Trunk dev server with hot reload at `http://127.0.0.1:8080`.
 
 ### Scanner Mode Selector
 
@@ -469,83 +510,100 @@ The Settings tab shows **live status** of every API key — green if configured,
 ## 📁 Project Structure
 
 ```
-quickscope/
-├── Cargo.toml              # Rust project with all dependencies
-├── .env.example            # Configuration template
-├── migrations/             # SQL migration reference
-│   └── 001_initial.sql
-├── docs/
-│   ├── AGENTS.md           # Agentic worker instructions
-│   ├── architecture.md     # System architecture documentation
-│   ├── alpha-filter.md     # Scoring formulas in detail
-│   ├── data-sources.md     # API comparison and integration logic
-│   ├── learning-engine.md  # Auto-tuner algorithm in depth
-│   ├── api-reference/      # Endpoint reference per data source
-│   │   ├── gmgn-endpoints.md
-│   │   ├── alph-ai-endpoints.md
-│   │   └── dex-screener.md
-│   ├── plans/              # Implementation plans
-│   └── superpowers/specs/  # Design specification
-└── src/
-    ├── main.rs             # Entry point (TUI event loop)
-    ├── lib.rs              # Module declarations
-    ├── app/                # Elm/TEA architecture
-    │   ├── mod.rs          # update() function
-    │   ├── state.rs        # AppState + TokenListMode
-    │   └── input.rs        # Key/mouse dispatch
-    ├── ui/                 # Terminal UI
-    │   ├── mod.rs
-    │   ├── theme.rs        # 4 themes (Dark, Terminal, Degen, Cyberpunk)
-    │   ├── layout.rs       # Root layout + overlays
-    │   ├── sidebar.rs      # Persistent tab sidebar
-    │   ├── format.rs       # Marketcap/volume abbreviation + color coding
-    │   └── widgets/        # 7 tabs + 8 shared widgets
-    │       ├── command_palette.rs  # Ctrl+P overlay with search/filter
-    │       ├── modal.rs           # Sweet-alert style with dimmed backdrop
-    │       ├── toast.rs           # Auto-dismiss notifications
-    │       ├── dashboard.rs
-    │       ├── scanner.rs         # Mode selector (Trending/Trenches/Watchlist/AI-Rec)
-    │       ├── analyzer.rs
-    │       ├── trade_terminal.rs
-    │       ├── journal.rs
-    │       ├── strategy.rs        # Auto-tune history + discrimination + post-mortem
-    │       ├── settings.rs        # Live API key status
-    │       └── ... (sparkline, progress_bar, tag, table, search_bar, chart, context_menu)
-    ├── data/               # Data sources
-    │   ├── models.rs       # All domain types + event/command enums
-    │   ├── orchestrator.rs # 3-source merge facade
-    │   ├── gmgn/           # GMGN client + rate limiter + parsers
-    │   ├── alph_ai/        # Alph AI REST + WebSocket (auto-reconnect)
-    │   └── dex_screener/   # DEX Screener client
-    ├── alpha/              # Alpha Filter Engine
-    │   ├── mod.rs          # Pipeline orchestrator
-    │   ├── feature_vector  # 30+ dimension extraction
-    │   ├── scoring.rs      # 6 category formulas
-    │   ├── hard_filters.rs # Instant reject checks
-    │   ├── rug_detect.rs   # Rug pull analysis
-    │   ├── modes.rs        # Trade mode selection
-    │   └── narrative.rs    # Narrative detection
-    ├── trade/              # Paper Trade Engine
-    │   ├── mod.rs          # Trade orchestrator
-    │   ├── simulator.rs    # Buy/sell simulation
-    │   ├── risk.rs         # 6 pre-trade checks + kill switch
-    │   └── monitor.rs      # TP/SL background task
-    ├── learning/           # Learning Engine
-    │   ├── mod.rs
-    │   ├── analyzer.rs     # Statistical discrimination
-    │   ├── tuner.rs        # Weight auto-tuning
-    │   ├── journal.rs      # Post-mortem flow
-    │   └── llm/            # AI providers
-    │       ├── mod.rs      # Enum-based provider
-    │       └── prompts.rs  # Prompt templates
-    └── storage/            # SQLite persistence
-        ├── mod.rs
-        ├── db.rs           # Connection pool + init
-        ├── migrations.rs   # Schema SQL
-        ├── positions.rs    # Position CRUD
-        ├── journal.rs      # Daily risk, watchlist, portfolio, tuning, post-mortems
-        ├── config.rs       # Alpha config + settings
-        └── cache.rs        # API response cache
+	quickscope/
+	├── Cargo.toml              # Rust project (workspace root)
+	├── Makefile                # Development commands (make build, make web, make test, …)
+	├── .env.example            # Configuration template
+	├── migrations/             # SQL migration reference
+	│   └── 001_initial.sql
+	├── docs/
+	│   ├── AGENTS.md           # Agentic worker instructions
+	│   ├── architecture.md     # System architecture documentation
+	│   ├── alpha-filter.md     # Scoring formulas in detail
+	│   ├── data-sources.md     # API comparison and integration logic
+	│   ├── learning-engine.md  # Auto-tuner algorithm in depth
+	│   ├── web-api.md          # REST API + WebSocket specification
+	│   ├── api-reference/      # Endpoint reference per data source
+	│   │   ├── gmgn-endpoints.md
+	│   │   ├── alph-ai-endpoints.md
+	│   │   └── dex-screener.md
+	│   ├── plans/              # Implementation plans
+	│   └── superpowers/specs/  # Design specification
+	├── src/
+	│   ├── main.rs             # Entry point (TUI event loop + web server)
+	│   ├── lib.rs              # Module declarations
+	│   ├── core.rs             # AppCore — shared business logic (TUI + web)
+	│   ├── app/                # Elm/TEA architecture
+	│   │   ├── mod.rs          # update() function
+	│   │   ├── state.rs        # AppState + TokenListMode
+	│   │   └── input.rs        # Key/mouse dispatch
+	│   ├── ui/                 # Terminal UI
+	│   │   ├── mod.rs
+	│   │   ├── theme.rs        # 4 themes (Dark, Terminal, Degen, Cyberpunk)
+	│   │   ├── layout.rs       # Root layout + overlays
+	│   │   ├── sidebar.rs      # Persistent tab sidebar
+	│   │   ├── format.rs       # Marketcap/volume abbreviation + color coding
+	│   │   └── widgets/        # 7 tabs + 8 shared widgets
+	│   │       ├── command_palette.rs  # Ctrl+P overlay with search/filter
+	│   │       ├── modal.rs           # Sweet-alert style with dimmed backdrop
+	│   │       ├── toast.rs           # Auto-dismiss notifications
+	│   │       ├── dashboard.rs
+	│   │       ├── scanner.rs         # Mode selector (Trending/Trenches/Watchlist/AI-Rec)
+	│   │       ├── analyzer.rs
+	│   │       ├── trade_terminal.rs
+	│   │       ├── journal.rs
+	│   │       ├── strategy.rs        # Auto-tune history + discrimination + post-mortem
+	│   │       ├── settings.rs        # Live API key status
+	│   │       └── ... (sparkline, progress_bar, tag, table, search_bar, chart, context_menu)
+	│   ├── web/                # Web server (Axum + WebSocket)
+	│   │   ├── mod.rs          # Router definition
+	│   │   ├── state.rs        # WebState with broadcast channel
+	│   │   ├── handlers.rs     # REST endpoint handlers
+	│   │   └── ws.rs           # WebSocket handler
+	│   ├── data/               # Data sources
+	│   │   ├── models.rs       # All domain types + event/command enums
+	│   │   ├── orchestrator.rs # 3-source merge facade
+	│   │   ├── gmgn/           # GMGN client + rate limiter + parsers
+	│   │   ├── alph_ai/        # Alph AI REST + WebSocket (auto-reconnect)
+	│   │   └── dex_screener/   # DEX Screener client
+	│   ├── alpha/              # Alpha Filter Engine
+	│   │   ├── mod.rs          # Pipeline orchestrator
+	│   │   ├── feature_vector  # 30+ dimension extraction
+	│   │   ├── scoring.rs      # 6 category formulas
+	│   │   ├── hard_filters.rs # Instant reject checks
+	│   │   ├── rug_detect.rs   # Rug pull analysis
+	│   │   ├── modes.rs        # Trade mode selection
+	│   │   └── narrative.rs    # Narrative detection
+	│   ├── trade/              # Paper Trade Engine
+	│   │   ├── mod.rs          # Trade orchestrator
+	│   │   ├── simulator.rs    # Buy/sell simulation
+	│   │   ├── risk.rs         # 6 pre-trade checks + kill switch
+	│   │   └── monitor.rs      # TP/SL background task
+	│   ├── learning/           # Learning Engine
+	│   │   ├── mod.rs
+	│   │   ├── analyzer.rs     # Statistical discrimination
+	│   │   ├── tuner.rs        # Weight auto-tuning
+	│   │   ├── journal.rs      # Post-mortem flow
+	│   │   └── llm/            # AI providers
+	│   │       ├── mod.rs      # Enum-based provider
+	│   │       └── prompts.rs  # Prompt templates
+	│   └── storage/            # SQLite persistence
+	│       ├── mod.rs
+	│       ├── db.rs           # Connection pool + init
+	│       ├── migrations.rs   # Schema SQL
+	│       ├── positions.rs    # Position CRUD
+	│       ├── journal.rs      # Daily risk, watchlist, portfolio, tuning, post-mortems
+	│       ├── config.rs       # Alpha config + settings
+	│       └── cache.rs        # API response cache
+	└── web-frontend/           # Leptos SPA (separate workspace crate)
+	    ├── index.html          # Trunk entry point (Tailwind CSS)
+	    ├── Cargo.toml          # Leptos + wasm dependencies
+	    └── src/
+	        ├── main.rs         # App mount
+	        ├── lib.rs          # Router + App component
+	        ├── api.rs          # HTTP client for backend API
+	        ├── components/     # Shared UI components (Sidebar)
+	        └── pages/          # 7 page components
 ```
 
 ---
